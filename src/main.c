@@ -70,6 +70,7 @@ static bool attributes_changed=false;
 #define X_STEP 0.05
 #define Z_MAX 100
 #define PI 3.14159265358979323846
+#define TOPIC "topic"
 static double x = 0.0;
 static double y = 0.0;
 static int z = 0;
@@ -216,9 +217,7 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 static char *get_attributes_payload(enum mqtt_qos qos)
 {
 	static char payload[128];
-	snprintf(payload, sizeof(payload), "{\"firmware_version\":\"%s\", \"serial_number\":\"%s\", \"uptime\":\"%d\"}",
-		"1.2.3",
-		"jdukes-001",
+	snprintf(payload, sizeof(payload), "{\"uptime\":\"%d\"}",
 		(uint32_t)k_uptime_get_32() / 1000);
 	return payload;
 }
@@ -227,7 +226,7 @@ static char *get_attributes_payload(enum mqtt_qos qos)
 static char *get_telemetry_payload(enum mqtt_qos qos)
 {
 	static char payload[128];
-	snprintf(payload, sizeof(payload), "{\"testval1\":\"%1.4f\", \"testval2\":\"%d\"}", y, z);
+	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", "hi");
 	return payload;
 }
 
@@ -241,7 +240,7 @@ static void prepare_attributes_msg(struct mqtt_publish_msg *pub_msg,
 	/* MQTT Quality of Service */
 	pub_msg->qos = qos;
 	/* Message's topic */
-	pub_msg->topic = "v1/devices/me/attributes";
+	pub_msg->topic = TOPIC;
 	pub_msg->topic_len = strlen(pub_msg->topic);
 	/* Packet Identifier, always use different values */
 	pub_msg->pkt_id = sys_rand32_get();
@@ -257,7 +256,7 @@ static void prepare_telemetry_msg(struct mqtt_publish_msg *pub_msg,
 	/* MQTT Quality of Service */
 	pub_msg->qos = qos;
 	/* Message's topic */
-	pub_msg->topic = "v1/devices/me/telemetry";
+	pub_msg->topic = TOPIC;
 	pub_msg->topic_len = strlen(pub_msg->topic);
 	/* Packet Identifier, always use different values */
 	pub_msg->pkt_id = sys_rand32_get();
