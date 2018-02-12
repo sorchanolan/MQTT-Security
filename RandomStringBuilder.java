@@ -18,7 +18,7 @@ public class RandomStringBuilder {
   }
 
   public static String getSaltString(int stringSize) {
-    String SALTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+    String SALTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
     StringBuilder salt = new StringBuilder();
     Random rnd = new Random();
     while (salt.length() < stringSize) { // length of the random string.
@@ -28,5 +28,4 @@ public class RandomStringBuilder {
     String saltStr = salt.toString();
     return saltStr;
   }
-
 }

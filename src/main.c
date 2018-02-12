@@ -65,16 +65,15 @@ static struct net_mgmt_event_callback cb;
 K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
-static bool telemetry_changed=false;
+static bool message_changed=false;
 static bool attributes_changed=false;
 
 #define X_STEP 0.05
 #define Z_MAX 100
 #define PI 3.14159265358979323846
+#define NUM_MESSAGES 1000
 #define TOPIC "topic"
-static double x = 0.0;
-static double y = 0.0;
-static int z = 0;
+static char* curr_msg = "";
 
 #define SS_STACK_SIZE 2048
 #define SS_PRIORITY 5
@@ -82,38 +81,38 @@ static int z = 0;
 K_THREAD_STACK_DEFINE(ss_stack_area, SS_STACK_SIZE);
 struct k_thread ss_thread;
 
-void sensors_thread(void * unused1, void * unused2, void * unused3)
+void message_thread()
 {
-	ARG_UNUSED(unused1);
-	ARG_UNUSED(unused2);
-	ARG_UNUSED(unused3);
+	uint32_t start_time;
+	uint32_t stop_time;
+	uint32_t cycles_spent;
+	uint32_t nanoseconds_spent = 0;
 
-	while (true) {
+	for (int arr_index = 0; arr_index < NUM_MESSAGES; arr_index++) {
 		k_sleep(APP_SLEEP_MSECS);
-
+		start_time = k_cycle_get_32();
 		k_mutex_lock(&pub_data, K_FOREVER);
 
-		y = sin(x * 2 * PI);
-
-		if ((x = x + X_STEP) >= 1.0)
-			x = 0.0;
-
-		if ((z++) > Z_MAX)
-			z = 0;
-
-		telemetry_changed = true;
+		curr_msg = messages_5[arr_index];
+		message_changed = true;
 
 		k_mutex_unlock(&pub_data);
 		k_sem_give(&pub_sem);
+		stop_time = k_cycle_get_32();
+		cycles_spent = stop_time - start_time;
+		nanoseconds_spent = nanoseconds_spent + SYS_CLOCK_HW_CYCLES_TO_NS(cycles_spent);
 	}
+
+	
+	printk("Time spent:%" PRIu32, nanoseconds_spent);
 }
 
 
-static void start_sensors()
+static void start_message_thread()
 {
 	k_tid_t ss_tid = k_thread_create(&ss_thread, ss_stack_area,
 								 K_THREAD_STACK_SIZEOF(ss_stack_area),
-								 sensors_thread,
+								 message_thread,
 								 NULL, NULL, NULL,
 								 SS_PRIORITY, 0, K_NO_WAIT);
 }
@@ -215,44 +214,18 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 	printk("[%s:%d] pkt_type: %u\n", __func__, __LINE__, pkt_type);
 }
 
-static char *get_attributes_payload(enum mqtt_qos qos)
+static char *get_message_payload(enum mqtt_qos qos) 
 {
 	static char payload[128];
-	snprintf(payload, sizeof(payload), "{\"uptime\":\"%d\"}",
-		(uint32_t)k_uptime_get_32() / 1000);
+	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", curr_msg);
 	return payload;
 }
 
-
-static char *get_telemetry_payload(enum mqtt_qos qos)
-{
-	static char payload[128];
-	char* printstr = messages_5[0];
-	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", printstr);
-	return payload;
-}
-
-static void prepare_attributes_msg(struct mqtt_publish_msg *pub_msg,
+static void prepare_msg(struct mqtt_publish_msg *pub_msg,
 				     enum mqtt_qos qos)
 {
 	/* MQTT message payload may be anything, we we use C strings */
-	pub_msg->msg = get_attributes_payload(qos);
-	/* Payload's length */
-	pub_msg->msg_len = strlen(pub_msg->msg);
-	/* MQTT Quality of Service */
-	pub_msg->qos = qos;
-	/* Message's topic */
-	pub_msg->topic = TOPIC;
-	pub_msg->topic_len = strlen(pub_msg->topic);
-	/* Packet Identifier, always use different values */
-	pub_msg->pkt_id = sys_rand32_get();
-}
-
-static void prepare_telemetry_msg(struct mqtt_publish_msg *pub_msg,
-				     enum mqtt_qos qos)
-{
-	/* MQTT message payload may be anything, we we use C strings */
-	pub_msg->msg = get_telemetry_payload(qos);
+	pub_msg->msg = get_message_payload(qos);
 	/* Payload's length */
 	pub_msg->msg_len = strlen(pub_msg->msg);
 	/* MQTT Quality of Service */
@@ -284,7 +257,6 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 	ARG_UNUSED(unused3);
 
 	int i, rc;
-	bool data_changed;
 
 	/* Set everything to 0 and later just assign the required fields. */
 	memset(&pub_ctx, 0x00, sizeof(pub_ctx));
@@ -352,14 +324,9 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 			bool data_changed = false;
 			k_mutex_lock(&pub_data, K_FOREVER);
 
-			if (telemetry_changed) {
-				prepare_telemetry_msg(&pub_ctx.pub_msg, MQTT_QoS0);
-				telemetry_changed=false;
-				data_changed = true;
-			}
-			else if (attributes_changed) {
-				prepare_attributes_msg(&pub_ctx.pub_msg, MQTT_QoS0);
-				attributes_changed = false;
+			if (message_changed) {
+				prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
+				message_changed=false;
 				data_changed = true;
 			}
 
@@ -382,7 +349,6 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 		k_sleep(APP_TX_RX_TIMEOUT);
 	}
 
-
 exit_pub:
 
 	printk("\nPublisher terminated!!\n");
@@ -403,7 +369,7 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 			   u32_t mgmt_event, struct net_if *iface)
 {
 	start_publisher();
-	start_sensors();
+	start_message_thread();
 }
 
 
