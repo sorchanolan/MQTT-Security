@@ -16,6 +16,7 @@
 #include <math.h>
 
 #include "config.h"
+#include "message_data.h"
 
 /* Container for some structures used by the MQTT publisher app. */
 struct mqtt_client_ctx {
@@ -226,7 +227,8 @@ static char *get_attributes_payload(enum mqtt_qos qos)
 static char *get_telemetry_payload(enum mqtt_qos qos)
 {
 	static char payload[128];
-	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", "hi");
+	char* printstr = messages_5[0];
+	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", printstr);
 	return payload;
 }
 

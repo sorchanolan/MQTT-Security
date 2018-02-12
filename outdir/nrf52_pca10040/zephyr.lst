@@ -1824,7 +1824,7 @@ static int publish_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
 
 	printk("[%s:%d] <%s> packet id: %u", __func__, __LINE__, str, pkt_id);
     14fe:	9100      	str	r1, [sp, #0]
-    1500:	22c4      	movs	r2, #196	; 0xc4
+    1500:	22c5      	movs	r2, #197	; 0xc5
     1502:	490d      	ldr	r1, [pc, #52]	; (1538 <publish_cb+0x58>)
     1504:	480d      	ldr	r0, [pc, #52]	; (153c <publish_cb+0x5c>)
     1506:	f001 fd1f 	bl	2f48 <printk>
@@ -1859,14 +1859,14 @@ static int publish_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
     152a:	4b08      	ldr	r3, [pc, #32]	; (154c <publish_cb+0x6c>)
     152c:	e7e7      	b.n	14fe <publish_cb+0x1e>
     152e:	bf00      	nop
-    1530:	0002ef40 	.word	0x0002ef40
-    1534:	0002ef18 	.word	0x0002ef18
+    1530:	000306ac 	.word	0x000306ac
+    1534:	00030684 	.word	0x00030684
     1538:	0002ee88 	.word	0x0002ee88
-    153c:	0002ef54 	.word	0x0002ef54
-    1540:	0002ef70 	.word	0x0002ef70
-    1544:	00030290 	.word	0x00030290
-    1548:	0002ef34 	.word	0x0002ef34
-    154c:	0002ef24 	.word	0x0002ef24
+    153c:	000306c0 	.word	0x000306c0
+    1540:	000306dc 	.word	0x000306dc
+    1544:	000319fc 	.word	0x000319fc
+    1548:	000306a0 	.word	0x000306a0
+    154c:	00030690 	.word	0x00030690
 
 00001550 <malformed_cb>:
 /**
@@ -1878,20 +1878,20 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
     1550:	b508      	push	{r3, lr}
 	printk("[%s:%d] pkt_type: %u\n", __func__, __LINE__, pkt_type);
     1552:	460b      	mov	r3, r1
-    1554:	22d6      	movs	r2, #214	; 0xd6
+    1554:	22d7      	movs	r2, #215	; 0xd7
     1556:	4902      	ldr	r1, [pc, #8]	; (1560 <malformed_cb+0x10>)
     1558:	4802      	ldr	r0, [pc, #8]	; (1564 <malformed_cb+0x14>)
     155a:	f001 fcf5 	bl	2f48 <printk>
     155e:	bd08      	pop	{r3, pc}
     1560:	0002ee94 	.word	0x0002ee94
-    1564:	0002eef8 	.word	0x0002eef8
+    1564:	0002eef4 	.word	0x0002eef4
 
 00001568 <disconnect_cb>:
 {
     1568:	b510      	push	{r4, lr}
     156a:	4604      	mov	r4, r0
 	printk("[%s:%d]", __func__, __LINE__);
-    156c:	2295      	movs	r2, #149	; 0x95
+    156c:	2296      	movs	r2, #150	; 0x96
     156e:	4907      	ldr	r1, [pc, #28]	; (158c <disconnect_cb+0x24>)
     1570:	4807      	ldr	r0, [pc, #28]	; (1590 <disconnect_cb+0x28>)
     1572:	f001 fce9 	bl	2f48 <printk>
@@ -1909,14 +1909,14 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
     158c:	0002ee78 	.word	0x0002ee78
     1590:	0002eeb8 	.word	0x0002eeb8
     1594:	0002eec0 	.word	0x0002eec0
-    1598:	00030290 	.word	0x00030290
+    1598:	000319fc 	.word	0x000319fc
 
 0000159c <connect_cb>:
 {
     159c:	b510      	push	{r4, lr}
     159e:	4604      	mov	r4, r0
 	printk("[%s:%d]", __func__, __LINE__);
-    15a0:	2282      	movs	r2, #130	; 0x82
+    15a0:	2283      	movs	r2, #131	; 0x83
     15a2:	4907      	ldr	r1, [pc, #28]	; (15c0 <connect_cb+0x24>)
     15a4:	4807      	ldr	r0, [pc, #28]	; (15c4 <connect_cb+0x28>)
     15a6:	f001 fccf 	bl	2f48 <printk>
@@ -1934,7 +1934,7 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
     15c0:	0002ee6c 	.word	0x0002ee6c
     15c4:	0002eeb8 	.word	0x0002eeb8
     15c8:	0002eec0 	.word	0x0002eec0
-    15cc:	00030290 	.word	0x00030290
+    15cc:	000319fc 	.word	0x000319fc
 
 000015d0 <get_telemetry_payload>:
 	return payload;
@@ -1945,7 +1945,8 @@ static char *get_telemetry_payload(enum mqtt_qos qos)
 {
     15d0:	b510      	push	{r4, lr}
 	static char payload[128];
-	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", "hi");
+	char* printstr = messages_5[0];
+	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", printstr);
     15d2:	4c04      	ldr	r4, [pc, #16]	; (15e4 <get_telemetry_payload+0x14>)
     15d4:	4b04      	ldr	r3, [pc, #16]	; (15e8 <get_telemetry_payload+0x18>)
     15d6:	4a05      	ldr	r2, [pc, #20]	; (15ec <get_telemetry_payload+0x1c>)
@@ -1957,8 +1958,8 @@ static char *get_telemetry_payload(enum mqtt_qos qos)
     15e0:	4620      	mov	r0, r4
     15e2:	bd10      	pop	{r4, pc}
     15e4:	20000090 	.word	0x20000090
-    15e8:	0002eee0 	.word	0x0002eee0
-    15ec:	0002eee4 	.word	0x0002eee4
+    15e8:	0002ef0c 	.word	0x0002ef0c
+    15ec:	0002eee0 	.word	0x0002eee0
 
 000015f0 <prepare_telemetry_msg>:
 	pub_msg->pkt_id = sys_rand32_get();
@@ -1994,7 +1995,7 @@ static void prepare_telemetry_msg(struct mqtt_publish_msg *pub_msg,
     1610:	f000 fd00 	bl	2014 <sys_rand32_get>
     1614:	80a0      	strh	r0, [r4, #4]
     1616:	bd38      	pop	{r3, r4, r5, pc}
-    1618:	0002ef10 	.word	0x0002ef10
+    1618:	0003067c 	.word	0x0003067c
 
 0000161c <get_attributes_payload>:
 {
@@ -2042,7 +2043,7 @@ K_SYSCALL_DECLARE0(K_SYSCALL_K_UPTIME_GET_32, k_uptime_get_32, u32_t);
     1668:	f000 fcd4 	bl	2014 <sys_rand32_get>
     166c:	80a0      	strh	r0, [r4, #4]
     166e:	bd38      	pop	{r3, r4, r5, pc}
-    1670:	0002ef10 	.word	0x0002ef10
+    1670:	0003067c 	.word	0x0003067c
 
 00001674 <publisher_thread>:
 K_THREAD_STACK_DEFINE(pub_stack_area, PUB_STACK_SIZE);
@@ -2138,7 +2139,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
     16e8:	9301      	str	r3, [sp, #4]
     16ea:	9400      	str	r4, [sp, #0]
     16ec:	4b6f      	ldr	r3, [pc, #444]	; (18ac <publisher_thread+0x238>)
-    16ee:	f44f 72a5 	mov.w	r2, #330	; 0x14a
+    16ee:	f44f 72a6 	mov.w	r2, #332	; 0x14c
     16f2:	496f      	ldr	r1, [pc, #444]	; (18b0 <publisher_thread+0x23c>)
     16f4:	486f      	ldr	r0, [pc, #444]	; (18b4 <publisher_thread+0x240>)
     16f6:	f001 fc27 	bl	2f48 <printk>
@@ -2171,7 +2172,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
     171a:	9301      	str	r3, [sp, #4]
     171c:	9500      	str	r5, [sp, #0]
     171e:	4b68      	ldr	r3, [pc, #416]	; (18c0 <publisher_thread+0x24c>)
-    1720:	f44f 72aa 	mov.w	r2, #340	; 0x154
+    1720:	f44f 72ab 	mov.w	r2, #342	; 0x156
     1724:	4962      	ldr	r1, [pc, #392]	; (18b0 <publisher_thread+0x23c>)
     1726:	4863      	ldr	r0, [pc, #396]	; (18b4 <publisher_thread+0x240>)
     1728:	f001 fc0e 	bl	2f48 <printk>
@@ -2278,7 +2279,7 @@ K_SYSCALL_DECLARE2(K_SYSCALL_K_MUTEX_LOCK, k_mutex_lock, int, struct k_mutex *, 
     17d0:	9201      	str	r2, [sp, #4]
     17d2:	9300      	str	r3, [sp, #0]
     17d4:	4b40      	ldr	r3, [pc, #256]	; (18d8 <publisher_thread+0x264>)
-    17d6:	f44f 72b8 	mov.w	r2, #368	; 0x170
+    17d6:	f44f 72b9 	mov.w	r2, #370	; 0x172
     17da:	4935      	ldr	r1, [pc, #212]	; (18b0 <publisher_thread+0x23c>)
     17dc:	4835      	ldr	r0, [pc, #212]	; (18b4 <publisher_thread+0x240>)
     17de:	f001 fbb3 	bl	2f48 <printk>
@@ -2297,7 +2298,7 @@ K_SYSCALL_DECLARE2(K_SYSCALL_K_MUTEX_LOCK, k_mutex_lock, int, struct k_mutex *, 
     17f6:	9201      	str	r2, [sp, #4]
     17f8:	9300      	str	r3, [sp, #0]
     17fa:	4b38      	ldr	r3, [pc, #224]	; (18dc <publisher_thread+0x268>)
-    17fc:	f240 1275 	movw	r2, #373	; 0x175
+    17fc:	f240 1277 	movw	r2, #375	; 0x177
     1800:	492b      	ldr	r1, [pc, #172]	; (18b0 <publisher_thread+0x23c>)
     1802:	482c      	ldr	r0, [pc, #176]	; (18b4 <publisher_thread+0x240>)
     1804:	f001 fba0 	bl	2f48 <printk>
@@ -2318,7 +2319,7 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_SLEEP, k_sleep, s32_t, duration);
     181e:	9201      	str	r2, [sp, #4]
     1820:	9300      	str	r3, [sp, #0]
     1822:	4b2f      	ldr	r3, [pc, #188]	; (18e0 <publisher_thread+0x26c>)
-    1824:	f44f 72bd 	mov.w	r2, #378	; 0x17a
+    1824:	f44f 72be 	mov.w	r2, #380	; 0x17c
     1828:	4921      	ldr	r1, [pc, #132]	; (18b0 <publisher_thread+0x23c>)
     182a:	4822      	ldr	r0, [pc, #136]	; (18b4 <publisher_thread+0x240>)
     182c:	f001 fb8c 	bl	2f48 <printk>
@@ -2342,7 +2343,7 @@ K_SYSCALL_DECLARE2(K_SYSCALL_K_SEM_TAKE, k_sem_take, int, struct k_sem *, sem, s
     1856:	9301      	str	r3, [sp, #4]
     1858:	9500      	str	r5, [sp, #0]
     185a:	4b22      	ldr	r3, [pc, #136]	; (18e4 <publisher_thread+0x270>)
-    185c:	f240 1241 	movw	r2, #321	; 0x141
+    185c:	f240 1243 	movw	r2, #323	; 0x143
     1860:	4913      	ldr	r1, [pc, #76]	; (18b0 <publisher_thread+0x23c>)
     1862:	4814      	ldr	r0, [pc, #80]	; (18b4 <publisher_thread+0x240>)
     1864:	f001 fb70 	bl	2f48 <printk>
@@ -2370,29 +2371,29 @@ exit_pub:
     1884:	0000159d 	.word	0x0000159d
     1888:	00001569 	.word	0x00001569
     188c:	00001551 	.word	0x00001551
-    1890:	0002ef8c 	.word	0x0002ef8c
+    1890:	000306f8 	.word	0x000306f8
     1894:	000014e1 	.word	0x000014e1
-    1898:	0002efa8 	.word	0x0002efa8
-    189c:	0002efc0 	.word	0x0002efc0
-    18a0:	0002efcc 	.word	0x0002efcc
-    18a4:	0002efdc 	.word	0x0002efdc
-    18a8:	0002ef84 	.word	0x0002ef84
-    18ac:	0002f008 	.word	0x0002f008
+    1898:	00030714 	.word	0x00030714
+    189c:	0003072c 	.word	0x0003072c
+    18a0:	00030738 	.word	0x00030738
+    18a4:	00030748 	.word	0x00030748
+    18a8:	000306f0 	.word	0x000306f0
+    18ac:	00030774 	.word	0x00030774
     18b0:	0002eea4 	.word	0x0002eea4
-    18b4:	0002eff0 	.word	0x0002eff0
+    18b4:	0003075c 	.word	0x0003075c
     18b8:	20000158 	.word	0x20000158
-    18bc:	0002ef80 	.word	0x0002ef80
-    18c0:	0002f018 	.word	0x0002f018
+    18bc:	000306ec 	.word	0x000306ec
+    18c0:	00030784 	.word	0x00030784
     18c4:	20000140 	.word	0x20000140
     18c8:	20000210 	.word	0x20000210
     18cc:	2000d060 	.word	0x2000d060
     18d0:	2000cfec 	.word	0x2000cfec
     18d4:	20000000 	.word	0x20000000
-    18d8:	0002f028 	.word	0x0002f028
-    18dc:	0002f038 	.word	0x0002f038
-    18e0:	0002f04c 	.word	0x0002f04c
-    18e4:	0002efe4 	.word	0x0002efe4
-    18e8:	0002f058 	.word	0x0002f058
+    18d8:	00030794 	.word	0x00030794
+    18dc:	000307a4 	.word	0x000307a4
+    18e0:	000307b8 	.word	0x000307b8
+    18e4:	00030750 	.word	0x00030750
+    18e8:	000307c4 	.word	0x000307c4
 
 000018ec <start_publisher>:
 
@@ -2853,8 +2854,8 @@ static inline void uart_irq_callback_set(struct device *dev,
     1b20:	bd70      	pop	{r4, r5, r6, pc}
     1b22:	bf00      	nop
     1b24:	20000248 	.word	0x20000248
-    1b28:	0002f074 	.word	0x0002f074
-    1b2c:	0002f078 	.word	0x0002f078
+    1b28:	000307e0 	.word	0x000307e0
+    1b2c:	000307e4 	.word	0x000307e4
 
 00001b30 <insert_char>:
 {
@@ -2915,8 +2916,8 @@ static inline void uart_irq_callback_set(struct device *dev,
     1b84:	f001 f9e0 	bl	2f48 <printk>
     1b88:	e8bd 81f0 	ldmia.w	sp!, {r4, r5, r6, r7, r8, pc}
     1b8c:	20000248 	.word	0x20000248
-    1b90:	0002f074 	.word	0x0002f074
-    1b94:	0002f078 	.word	0x0002f078
+    1b90:	000307e0 	.word	0x000307e0
+    1b94:	000307e4 	.word	0x000307e4
 
 00001b98 <handle_ansi>:
 {
@@ -3175,8 +3176,8 @@ static inline atomic_val_t atomic_and(atomic_t *target, atomic_val_t value)
     1da4:	2000023c 	.word	0x2000023c
     1da8:	2000022c 	.word	0x2000022c
     1dac:	2000023d 	.word	0x2000023d
-    1db0:	0002f084 	.word	0x0002f084
-    1db4:	0002f07c 	.word	0x0002f07c
+    1db0:	000307f0 	.word	0x000307f0
+    1db4:	000307e8 	.word	0x000307e8
 
 00001db8 <uart_console_isr>:
 {
@@ -3510,7 +3511,7 @@ static int uart_console_init(struct device *arg)
 }
     2008:	2000      	movs	r0, #0
     200a:	bd08      	pop	{r3, pc}
-    200c:	0002f08c 	.word	0x0002f08c
+    200c:	000307f8 	.word	0x000307f8
     2010:	20000248 	.word	0x20000248
 
 00002014 <sys_rand32_get>:
@@ -4210,8 +4211,8 @@ static inline int gpio_pin_configure(struct device *port, u32_t pin,
     2374:	4798      	blx	r3
 	return 0;
     2376:	e7ea      	b.n	234e <uart_nrf5_init+0x56>
-    2378:	0002f0a0 	.word	0x0002f0a0
-    237c:	0002f0cc 	.word	0x0002f0cc
+    2378:	0003080c 	.word	0x0003080c
+    237c:	00030838 	.word	0x00030838
 
 00002380 <rtc_compare_set>:
 static void rtc_compare_set(u32_t rtc_ticks)
@@ -4496,7 +4497,7 @@ static inline int clock_control_on(struct device *dev,
     24e6:	f04f 30ff 	mov.w	r0, #4294967295	; 0xffffffff
 }
     24ea:	bd70      	pop	{r4, r5, r6, pc}
-    24ec:	0002f0a8 	.word	0x0002f0a8
+    24ec:	00030814 	.word	0x00030814
     24f0:	20000254 	.word	0x20000254
     24f4:	20000250 	.word	0x20000250
     24f8:	40011000 	.word	0x40011000
@@ -5121,7 +5122,7 @@ static int gpio_nrf5_P0_init(struct device *dev)
 			return -EIO;
     284e:	f06f 0104 	mvn.w	r1, #4
     2852:	e7e5      	b.n	2820 <gpio_nrf5_config+0xf0>
-    2854:	0002f110 	.word	0x0002f110
+    2854:	0003087c 	.word	0x0003087c
 
 00002858 <_m16src_stop>:
 		:
@@ -6440,7 +6441,7 @@ int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t *k)
     3084:	e7f8      	b.n	3078 <tc_aes128_set_encrypt_key+0xa4>
     3086:	bf00      	nop
     3088:	0002edf0 	.word	0x0002edf0
-    308c:	0002f190 	.word	0x0002f190
+    308c:	000308fc 	.word	0x000308fc
 
 00003090 <tc_aes_encrypt>:
 int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
@@ -6561,7 +6562,7 @@ int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
     31a2:	3301      	adds	r3, #1
     31a4:	e002      	b.n	31ac <tc_aes_encrypt+0x11c>
     31a6:	bf00      	nop
-    31a8:	0002f190 	.word	0x0002f190
+    31a8:	000308fc 	.word	0x000308fc
     31ac:	2b0f      	cmp	r3, #15
     31ae:	d9f3      	bls.n	3198 <tc_aes_encrypt+0x108>
 	t[0]  = s[0]; t[1] = s[5]; t[2] = s[10]; t[3] = s[15];
@@ -7083,7 +7084,7 @@ int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
 		return TC_CRYPTO_FAIL;
     376c:	2000      	movs	r0, #0
     376e:	e7f6      	b.n	375e <tc_aes_encrypt+0x6ce>
-    3770:	0002f190 	.word	0x0002f190
+    3770:	000308fc 	.word	0x000308fc
 
 00003774 <gf_double>:
  *           the in and out buffers do not overlap.
@@ -7730,7 +7731,7 @@ static inline void sys_put_le32(u32_t val, u8_t dst[4])
     3a74:	f7fc fc24 	bl	2c0 <memcpy>
     3a78:	bd70      	pop	{r4, r5, r6, pc}
     3a7a:	bf00      	nop
-    3a7c:	0002f428 	.word	0x0002f428
+    3a7c:	00030b94 	.word	0x00030b94
 
 00003a80 <uuid128_cmp>:
 		return;
@@ -10704,8 +10705,8 @@ static inline int atomic_test_bit(const atomic_t *target, int bit)
     4e86:	bf00      	nop
     4e88:	20003ba8 	.word	0x20003ba8
     4e8c:	cccccccd 	.word	0xcccccccd
-    4e90:	0002f43c 	.word	0x0002f43c
-    4e94:	0002f448 	.word	0x0002f448
+    4e90:	00030ba8 	.word	0x00030ba8
+    4e94:	00030bb4 	.word	0x00030bb4
     4e98:	2000b808 	.word	0x2000b808
 
 00004e9c <check_pending_conn>:
@@ -18519,7 +18520,7 @@ static att_type_t att_op_get_type(u8_t op)
 		return ATT_COMMAND;
     8154:	2000      	movs	r0, #0
     8156:	4770      	bx	lr
-    8158:	0002f47c 	.word	0x0002f47c
+    8158:	00030be8 	.word	0x00030be8
 
 0000815c <att_cb>:
 {
@@ -20226,7 +20227,7 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_SEM_GIVE, k_sem_give, struct k_sem *, sem);
     8c7e:	4638      	mov	r0, r7
     8c80:	4798      	blx	r3
     8c82:	e7bb      	b.n	8bfc <bt_att_recv+0x4c>
-    8c84:	0002f47c 	.word	0x0002f47c
+    8c84:	00030be8 	.word	0x00030be8
 
 00008c88 <att_write_rsp>:
 {
@@ -22446,7 +22447,7 @@ static u8_t disconnected_cb(const struct bt_gatt_attr *attr, void *user_data)
 }
     9a8e:	b004      	add	sp, #16
     9a90:	e8bd 81f0 	ldmia.w	sp!, {r4, r5, r6, r7, r8, pc}
-    9a94:	0002f5c4 	.word	0x0002f5c4
+    9a94:	00030d30 	.word	0x00030d30
 
 00009a98 <bt_gatt_attr_read_service>:
 {
@@ -22919,7 +22920,7 @@ static u8_t get_pair_method(struct bt_smp *smp, u8_t remote_io)
 		return JUST_WORKS;
     9d98:	2000      	movs	r0, #0
     9d9a:	4770      	bx	lr
-    9d9c:	0002f5e8 	.word	0x0002f5e8
+    9d9c:	00030d54 	.word	0x00030d54
 
 00009da0 <get_encryption_key_size>:
 	/*
@@ -23032,7 +23033,7 @@ static u8_t legacy_get_pair_method(struct bt_smp *smp, u8_t remote_io)
 			method = PASSKEY_INPUT;
     9e10:	2001      	movs	r0, #1
     9e12:	e7f3      	b.n	9dfc <legacy_get_pair_method+0x2c>
-    9e14:	0002f5cc 	.word	0x0002f5cc
+    9e14:	00030d38 	.word	0x00030d38
 
 00009e18 <get_auth>:
 
@@ -23891,7 +23892,7 @@ static inline void sys_mem_swap(void *buf, size_t length)
     a38c:	b01b      	add	sp, #108	; 0x6c
     a38e:	e8bd 83f0 	ldmia.w	sp!, {r4, r5, r6, r7, r8, r9, pc}
     a392:	bf00      	nop
-    a394:	0002f604 	.word	0x0002f604
+    a394:	00030d70 	.word	0x00030d70
 
 0000a398 <smp_f6>:
 {
@@ -25504,7 +25505,7 @@ static inline int atomic_test_and_clear_bit(atomic_t *target, int bit)
     b048:	4628      	mov	r0, r5
     b04a:	f7ff fd28 	bl	aa9e <smp_error>
     b04e:	e7a7      	b.n	afa0 <bt_smp_recv+0x8>
-    b050:	0002f554 	.word	0x0002f554
+    b050:	00030cc0 	.word	0x00030cc0
 
 0000b054 <smp_dhkey_check>:
 {
@@ -26354,7 +26355,7 @@ static inline int atomic_test_and_clear_bit(atomic_t *target, int bit)
     b7a2:	2308      	movs	r3, #8
     b7a4:	e7ec      	b.n	b780 <smp_public_key+0xf0>
     b7a6:	bf00      	nop
-    b7a8:	0002f614 	.word	0x0002f614
+    b7a8:	00030d80 	.word	0x00030d80
     b7ac:	20002940 	.word	0x20002940
     b7b0:	200008f4 	.word	0x200008f4
 
@@ -29855,7 +29856,7 @@ void bt_keys_clear(struct bt_keys *keys)
 }
     d0a4:	b00a      	add	sp, #40	; 0x28
     d0a6:	bd70      	pop	{r4, r5, r6, pc}
-    d0a8:	0002f6a8 	.word	0x0002f6a8
+    d0a8:	00030e14 	.word	0x00030e14
 
 0000d0ac <vendor_cmd_handle>:
 {
@@ -31748,12 +31749,12 @@ static inline int bt_addr_le_to_str(const bt_addr_le_t *addr, char *str,
     dd74:	f7f5 f8f6 	bl	2f64 <snprintk>
     dd78:	e7d0      	b.n	dd1c <le_adv_ext_report+0x54>
     dd7a:	bf00      	nop
-    dd7c:	0002f654 	.word	0x0002f654
-    dd80:	0002f684 	.word	0x0002f684
-    dd84:	0002f65c 	.word	0x0002f65c
-    dd88:	0002f664 	.word	0x0002f664
-    dd8c:	0002f670 	.word	0x0002f670
-    dd90:	0002f67c 	.word	0x0002f67c
+    dd7c:	00030dc0 	.word	0x00030dc0
+    dd80:	00030df0 	.word	0x00030df0
+    dd84:	00030dc8 	.word	0x00030dc8
+    dd88:	00030dd0 	.word	0x00030dd0
+    dd8c:	00030ddc 	.word	0x00030ddc
+    dd90:	00030de8 	.word	0x00030de8
 
 0000dd94 <le_adv_ext_1M_report>:
 {
@@ -31874,12 +31875,12 @@ static inline int bt_addr_le_to_str(const bt_addr_le_t *addr, char *str,
     de7e:	e7d7      	b.n	de30 <le_scan_req_received+0x88>
     de80:	2000baf8 	.word	0x2000baf8
     de84:	2000bb00 	.word	0x2000bb00
-    de88:	0002f654 	.word	0x0002f654
-    de8c:	0002f684 	.word	0x0002f684
-    de90:	0002f65c 	.word	0x0002f65c
-    de94:	0002f664 	.word	0x0002f664
-    de98:	0002f670 	.word	0x0002f670
-    de9c:	0002f67c 	.word	0x0002f67c
+    de88:	00030dc0 	.word	0x00030dc0
+    de8c:	00030df0 	.word	0x00030df0
+    de90:	00030dc8 	.word	0x00030dc8
+    de94:	00030dd0 	.word	0x00030dd0
+    de98:	00030ddc 	.word	0x00030ddc
+    de9c:	00030de8 	.word	0x00030de8
 
 0000dea0 <encode_control>:
 {
@@ -32304,7 +32305,7 @@ static int _hci_driver_init(struct device *unused)
 }
     e160:	2000      	movs	r0, #0
     e162:	bd08      	pop	{r3, pc}
-    e164:	0002f6d0 	.word	0x0002f6d0
+    e164:	00030e3c 	.word	0x00030e3c
 
 0000e168 <acl_handle>:
 {
@@ -32472,8 +32473,8 @@ K_SYSCALL_DECLARE0(K_SYSCALL_K_UPTIME_GET_32, k_uptime_get_32, u32_t);
     e28c:	20000a68 	.word	0x20000a68
     e290:	20004130 	.word	0x20004130
     e294:	2492492d 	.word	0x2492492d
-    e298:	0002f6e0 	.word	0x0002f6e0
-    e29c:	0002f448 	.word	0x0002f448
+    e298:	00030e4c 	.word	0x00030e4c
+    e29c:	00030bb4 	.word	0x00030bb4
 
 0000e2a0 <hci_driver_open>:
 {
@@ -32660,8 +32661,8 @@ K_SYSCALL_DECLARE0(K_SYSCALL_K_UPTIME_GET_32, k_uptime_get_32, u32_t);
     e408:	20000a6c 	.word	0x20000a6c
     e40c:	2000d074 	.word	0x2000d074
     e410:	200042f0 	.word	0x200042f0
-    e414:	0002f6f8 	.word	0x0002f6f8
-    e418:	0002f448 	.word	0x0002f448
+    e414:	00030e64 	.word	0x00030e64
+    e418:	00030bb4 	.word	0x00030bb4
 
 0000e41c <mayfly_init>:
 } mft[MAYFLY_CALLEE_COUNT][MAYFLY_CALLER_COUNT];
@@ -48203,7 +48204,7 @@ static void ticker_op_latency_cancelled(u32_t ticker_status, void *params)
    1506c:	00012381 	.word	0x00012381
    15070:	20000e84 	.word	0x20000e84
    15074:	09ce5400 	.word	0x09ce5400
-   15078:	0002fb40 	.word	0x0002fb40
+   15078:	000312ac 	.word	0x000312ac
    1507c:	431bde83 	.word	0x431bde83
    15080:	00015a1d 	.word	0x00015a1d
    15084:	20000fdc 	.word	0x20000fdc
@@ -52386,7 +52387,7 @@ static void ticker_op_latency_cancelled(u32_t ticker_status, void *params)
    17248:	20000e84 	.word	0x20000e84
    1724c:	026259ff 	.word	0x026259ff
    17250:	01c9c37f 	.word	0x01c9c37f
-   17254:	0002fb40 	.word	0x0002fb40
+   17254:	000312ac 	.word	0x000312ac
    17258:	431bde83 	.word	0x431bde83
    1725c:	3b9aca00 	.word	0x3b9aca00
    17260:	00010eb9 	.word	0x00010eb9
@@ -55598,11 +55599,11 @@ int ll_init(struct k_sem *sem_rx)
    189fc:	200017a8 	.word	0x200017a8
    18a00:	20001788 	.word	0x20001788
    18a04:	20001794 	.word	0x20001794
-   18a08:	0002f0a8 	.word	0x0002f0a8
+   18a08:	00030814 	.word	0x00030814
    18a0c:	20001768 	.word	0x20001768
    18a10:	2000152c 	.word	0x2000152c
    18a14:	2000140c 	.word	0x2000140c
-   18a18:	0002f0b4 	.word	0x0002f0b4
+   18a18:	00030820 	.word	0x00030820
    18a1c:	2000100c 	.word	0x2000100c
 
 00018a20 <ll_addr_get>:
@@ -68955,10 +68956,10 @@ static int net_bt_init(struct device *dev)
    1dcd8:	f06f 0015 	mvn.w	r0, #21
    1dcdc:	e7e5      	b.n	1dcaa <net_mgmt_NET_REQUEST_BT_ADVERTISE+0x1e>
    1dcde:	bf00      	nop
-   1dce0:	0002fb60 	.word	0x0002fb60
-   1dce4:	0002fb64 	.word	0x0002fb64
-   1dce8:	0002fb68 	.word	0x0002fb68
-   1dcec:	0002fb50 	.word	0x0002fb50
+   1dce0:	000312cc 	.word	0x000312cc
+   1dce4:	000312d0 	.word	0x000312d0
+   1dce8:	000312d4 	.word	0x000312d4
+   1dcec:	000312bc 	.word	0x000312bc
 
 0001dcf0 <net_icmpv6_register_handler>:
 	node->next = list->head;
@@ -71355,38 +71356,38 @@ static inline char *net_sprint_ipv6_addr(const struct in6_addr *addr)
 		printk("\t%s%s\n",
    1eb80:	4a14      	ldr	r2, [pc, #80]	; (1ebd4 <iface_cb+0x278>)
    1eb82:	e7e0      	b.n	1eb46 <iface_cb+0x1ea>
-   1eb84:	0002fd04 	.word	0x0002fd04
-   1eb88:	0002feb4 	.word	0x0002feb4
+   1eb84:	00031470 	.word	0x00031470
+   1eb88:	00031620 	.word	0x00031620
    1eb8c:	200023a8 	.word	0x200023a8
-   1eb90:	0002fd2c 	.word	0x0002fd2c
-   1eb94:	0002fd3c 	.word	0x0002fd3c
-   1eb98:	0002fd4c 	.word	0x0002fd4c
-   1eb9c:	0002fd18 	.word	0x0002fd18
-   1eba0:	0002fc6c 	.word	0x0002fc6c
-   1eba4:	0002fca4 	.word	0x0002fca4
-   1eba8:	0002fcac 	.word	0x0002fcac
-   1ebac:	0002fcb4 	.word	0x0002fcb4
-   1ebb0:	0002fc98 	.word	0x0002fc98
-   1ebb4:	0002fcc4 	.word	0x0002fcc4
-   1ebb8:	0002fce0 	.word	0x0002fce0
-   1ebbc:	0002fcec 	.word	0x0002fcec
-   1ebc0:	0002fbb8 	.word	0x0002fbb8
-   1ebc4:	0002fcd4 	.word	0x0002fcd4
-   1ebc8:	0002fcf8 	.word	0x0002fcf8
-   1ebcc:	0002fd70 	.word	0x0002fd70
+   1eb90:	00031498 	.word	0x00031498
+   1eb94:	000314a8 	.word	0x000314a8
+   1eb98:	000314b8 	.word	0x000314b8
+   1eb9c:	00031484 	.word	0x00031484
+   1eba0:	000313d8 	.word	0x000313d8
+   1eba4:	00031410 	.word	0x00031410
+   1eba8:	00031418 	.word	0x00031418
+   1ebac:	00031420 	.word	0x00031420
+   1ebb0:	00031404 	.word	0x00031404
+   1ebb4:	00031430 	.word	0x00031430
+   1ebb8:	0003144c 	.word	0x0003144c
+   1ebbc:	00031458 	.word	0x00031458
+   1ebc0:	00031324 	.word	0x00031324
+   1ebc4:	00031440 	.word	0x00031440
+   1ebc8:	00031464 	.word	0x00031464
+   1ebcc:	000314dc 	.word	0x000314dc
    1ebd0:	200023c0 	.word	0x200023c0
-   1ebd4:	0002f390 	.word	0x0002f390
-   1ebd8:	0002fd8c 	.word	0x0002fd8c
-   1ebdc:	0002fd80 	.word	0x0002fd80
-   1ebe0:	0002fdb0 	.word	0x0002fdb0
-   1ebe4:	0002fdb8 	.word	0x0002fdb8
-   1ebe8:	0002fdd4 	.word	0x0002fdd4
-   1ebec:	0002fde0 	.word	0x0002fde0
-   1ebf0:	0002fdf8 	.word	0x0002fdf8
-   1ebf4:	0002fe00 	.word	0x0002fe00
-   1ebf8:	0002fe20 	.word	0x0002fe20
-   1ebfc:	0002fe40 	.word	0x0002fe40
-   1ec00:	0002fe60 	.word	0x0002fe60
+   1ebd4:	00030afc 	.word	0x00030afc
+   1ebd8:	000314f8 	.word	0x000314f8
+   1ebdc:	000314ec 	.word	0x000314ec
+   1ebe0:	0003151c 	.word	0x0003151c
+   1ebe4:	00031524 	.word	0x00031524
+   1ebe8:	00031540 	.word	0x00031540
+   1ebec:	0003154c 	.word	0x0003154c
+   1ebf0:	00031564 	.word	0x00031564
+   1ebf4:	0003156c 	.word	0x0003156c
+   1ebf8:	0003158c 	.word	0x0003158c
+   1ebfc:	000315ac 	.word	0x000315ac
+   1ec00:	000315cc 	.word	0x000315cc
 
 0001ec04 <net_neighbor_data_remove>:
 	return net_ipv6_nbr_add(net_pkt_iface(pkt), &NET_IPV6_HDR(pkt)->src,
@@ -71893,13 +71894,13 @@ static void setup_headers(struct net_pkt *pkt, u8_t nd6_len,
 }
    1eee8:	4770      	bx	lr
    1eeea:	bf00      	nop
-   1eeec:	0002fb80 	.word	0x0002fb80
-   1eef0:	0002fb98 	.word	0x0002fb98
-   1eef4:	0002fba0 	.word	0x0002fba0
-   1eef8:	0002fba8 	.word	0x0002fba8
-   1eefc:	0002fbb0 	.word	0x0002fbb0
-   1ef00:	0002fbb8 	.word	0x0002fbb8
-   1ef04:	0002fb8c 	.word	0x0002fb8c
+   1eeec:	000312ec 	.word	0x000312ec
+   1eef0:	00031304 	.word	0x00031304
+   1eef4:	0003130c 	.word	0x0003130c
+   1eef8:	00031314 	.word	0x00031314
+   1eefc:	0003131c 	.word	0x0003131c
+   1ef00:	00031324 	.word	0x00031324
+   1ef04:	000312f8 	.word	0x000312f8
 
 0001ef08 <net_ipv6_nbr_foreach>:
 {
@@ -71961,7 +71962,7 @@ static void setup_headers(struct net_pkt *pkt, u8_t nd6_len,
 }
    1ef64:	4800      	ldr	r0, [pc, #0]	; (1ef68 <net_ipv6_unspecified_address+0x4>)
    1ef66:	4770      	bx	lr
-   1ef68:	0002fb70 	.word	0x0002fb70
+   1ef68:	000312dc 	.word	0x000312dc
 
 0001ef6c <create_mldv2>:
 
@@ -80739,7 +80740,7 @@ K_SYSCALL_DECLARE3_VOID(K_SYSCALL_K_SEM_INIT, k_sem_init, struct k_sem *, sem, u
 }
    22c64:	4800      	ldr	r0, [pc, #0]	; (22c68 <net_tcp_state_str+0x4>)
    22c66:	4770      	bx	lr
-   22c68:	0002f390 	.word	0x0002f390
+   22c68:	00030afc 	.word	0x00030afc
 
 00022c6c <net_tcp_init>:
 		}
@@ -82322,10 +82323,10 @@ struct net_buf *net_tcp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
 }
    2379e:	4770      	bx	lr
    237a0:	0002eddc 	.word	0x0002eddc
-   237a4:	0002fc88 	.word	0x0002fc88
-   237a8:	0002fc6c 	.word	0x0002fc6c
-   237ac:	0002fc7c 	.word	0x0002fc7c
-   237b0:	0002fc60 	.word	0x0002fc60
+   237a4:	000313f4 	.word	0x000313f4
+   237a8:	000313d8 	.word	0x000313d8
+   237ac:	000313e8 	.word	0x000313e8
+   237b0:	000313cc 	.word	0x000313cc
 
 000237b4 <slab_pool_found_already>:
 				    struct k_mem_slab *slab,
@@ -82392,7 +82393,7 @@ struct net_buf *net_tcp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
 }
    237f8:	2000      	movs	r0, #0
    237fa:	bd08      	pop	{r3, pc}
-   237fc:	0002ff64 	.word	0x0002ff64
+   237fc:	000316d0 	.word	0x000316d0
 
 00023800 <net_shell_cmd_app>:
 {
@@ -82403,7 +82404,7 @@ struct net_buf *net_tcp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
 }
    23808:	2000      	movs	r0, #0
    2380a:	bd08      	pop	{r3, pc}
-   2380c:	0002ff9c 	.word	0x0002ff9c
+   2380c:	00031708 	.word	0x00031708
 
 00023810 <net_shell_cmd_arp>:
 {
@@ -82414,7 +82415,7 @@ struct net_buf *net_tcp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
 }
    23818:	2000      	movs	r0, #0
    2381a:	bd08      	pop	{r3, pc}
-   2381c:	00030020 	.word	0x00030020
+   2381c:	0003178c 	.word	0x0003178c
 
 00023820 <net_shell_cmd_dns>:
 {
@@ -82425,7 +82426,7 @@ struct net_buf *net_tcp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
 }
    23828:	2000      	movs	r0, #0
    2382a:	bd08      	pop	{r3, pc}
-   2382c:	00030120 	.word	0x00030120
+   2382c:	0003188c 	.word	0x0003188c
 
 00023830 <net_shell_cmd_http>:
 {
@@ -82436,7 +82437,7 @@ struct net_buf *net_tcp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
 }
    23838:	2000      	movs	r0, #0
    2383a:	bd08      	pop	{r3, pc}
-   2383c:	00030140 	.word	0x00030140
+   2383c:	000318ac 	.word	0x000318ac
 
 00023840 <context_info>:
 	return context->flags & NET_CONTEXT_IN_USE;
@@ -82531,8 +82532,8 @@ struct net_buf *net_tcp_set_chksum(struct net_pkt *pkt, struct net_buf *frag)
    238ae:	e7d9      	b.n	23864 <context_info+0x24>
    238b0:	4770      	bx	lr
    238b2:	bf00      	nop
-   238b4:	0002fc24 	.word	0x0002fc24
-   238b8:	0002fc30 	.word	0x0002fc30
+   238b4:	00031390 	.word	0x00031390
+   238b8:	0003139c 	.word	0x0003139c
 
 000238bc <net_shell_cmd_rpl>:
 }
@@ -82556,7 +82557,7 @@ int net_shell_cmd_rpl(int argc, char *argv[])
 }
    238c4:	2000      	movs	r0, #0
    238c6:	bd08      	pop	{r3, pc}
-   238c8:	00030350 	.word	0x00030350
+   238c8:	00031abc 	.word	0x00031abc
 
 000238cc <net_shell_cmd_stacks>:
 extern K_THREAD_STACK_DEFINE(sys_work_q_stack,
@@ -82739,18 +82740,18 @@ int net_shell_cmd_stacks(int argc, char *argv[])
    239cc:	b007      	add	sp, #28
    239ce:	bd30      	pop	{r4, r5, pc}
    239d0:	2000d414 	.word	0x2000d414
-   239d4:	00030384 	.word	0x00030384
+   239d4:	00031af0 	.word	0x00031af0
    239d8:	2000d450 	.word	0x2000d450
    239dc:	2000a2b8 	.word	0x2000a2b8
-   239e0:	000303c8 	.word	0x000303c8
-   239e4:	000303d4 	.word	0x000303d4
-   239e8:	000303dc 	.word	0x000303dc
+   239e0:	00031b34 	.word	0x00031b34
+   239e4:	00031b40 	.word	0x00031b40
+   239e8:	00031b48 	.word	0x00031b48
    239ec:	2000abf8 	.word	0x2000abf8
-   239f0:	0003041c 	.word	0x0003041c
-   239f4:	00030430 	.word	0x00030430
+   239f0:	00031b88 	.word	0x00031b88
+   239f4:	00031b9c 	.word	0x00031b9c
    239f8:	2000b3f8 	.word	0x2000b3f8
-   239fc:	00030434 	.word	0x00030434
-   23a00:	00030448 	.word	0x00030448
+   239fc:	00031ba0 	.word	0x00031ba0
+   23a00:	00031bb4 	.word	0x00031bb4
 
 00023a04 <net_shell_cmd_stats>:
 
@@ -82862,23 +82863,23 @@ int net_shell_cmd_stats(int argc, char *argv[])
    23ad8:	b002      	add	sp, #8
    23ada:	bd10      	pop	{r4, pc}
    23adc:	200029e8 	.word	0x200029e8
-   23ae0:	00030450 	.word	0x00030450
-   23ae4:	00030480 	.word	0x00030480
-   23ae8:	000304a4 	.word	0x000304a4
-   23aec:	000304c8 	.word	0x000304c8
-   23af0:	000304f4 	.word	0x000304f4
-   23af4:	0003051c 	.word	0x0003051c
-   23af8:	00030540 	.word	0x00030540
-   23afc:	00030560 	.word	0x00030560
-   23b00:	00030584 	.word	0x00030584
-   23b04:	00030598 	.word	0x00030598
-   23b08:	000305b4 	.word	0x000305b4
-   23b0c:	000305d8 	.word	0x000305d8
-   23b10:	00030600 	.word	0x00030600
-   23b14:	00030628 	.word	0x00030628
-   23b18:	00030648 	.word	0x00030648
-   23b1c:	0003065c 	.word	0x0003065c
-   23b20:	00030670 	.word	0x00030670
+   23ae0:	00031bbc 	.word	0x00031bbc
+   23ae4:	00031bec 	.word	0x00031bec
+   23ae8:	00031c10 	.word	0x00031c10
+   23aec:	00031c34 	.word	0x00031c34
+   23af0:	00031c60 	.word	0x00031c60
+   23af4:	00031c88 	.word	0x00031c88
+   23af8:	00031cac 	.word	0x00031cac
+   23afc:	00031ccc 	.word	0x00031ccc
+   23b00:	00031cf0 	.word	0x00031cf0
+   23b04:	00031d04 	.word	0x00031d04
+   23b08:	00031d20 	.word	0x00031d20
+   23b0c:	00031d44 	.word	0x00031d44
+   23b10:	00031d6c 	.word	0x00031d6c
+   23b14:	00031d94 	.word	0x00031d94
+   23b18:	00031db4 	.word	0x00031db4
+   23b1c:	00031dc8 	.word	0x00031dc8
+   23b20:	00031ddc 	.word	0x00031ddc
 
 00023b24 <tcp_sent_cb>:
 
@@ -82893,7 +82894,7 @@ static void tcp_sent_cb(struct net_context *context,
    23b28:	f7df fa0e 	bl	2f48 <printk>
    23b2c:	bd08      	pop	{r3, pc}
    23b2e:	bf00      	nop
-   23b30:	00030930 	.word	0x00030930
+   23b30:	0003209c 	.word	0x0003209c
 
 00023b34 <net_shell_cmd_conn>:
 {
@@ -82940,13 +82941,13 @@ static void tcp_sent_cb(struct net_context *context,
    23b7c:	f7df f9e4 	bl	2f48 <printk>
    23b80:	e7f4      	b.n	23b6c <net_shell_cmd_conn+0x38>
    23b82:	bf00      	nop
-   23b84:	0003007c 	.word	0x0003007c
+   23b84:	000317e8 	.word	0x000317e8
    23b88:	00023d11 	.word	0x00023d11
-   23b8c:	0002f390 	.word	0x0002f390
-   23b90:	000300cc 	.word	0x000300cc
+   23b8c:	00030afc 	.word	0x00030afc
+   23b90:	00031838 	.word	0x00031838
    23b94:	00023ba1 	.word	0x00023ba1
-   23b98:	000300bc 	.word	0x000300bc
-   23b9c:	0003010c 	.word	0x0003010c
+   23b98:	00031828 	.word	0x00031828
+   23b9c:	00031878 	.word	0x00031878
 
 00023ba0 <tcp_cb>:
 {
@@ -82990,7 +82991,7 @@ static void tcp_sent_cb(struct net_context *context,
 }
    23bfa:	b004      	add	sp, #16
    23bfc:	e8bd 87f0 	ldmia.w	sp!, {r4, r5, r6, r7, r8, r9, sl, pc}
-   23c00:	0003088c 	.word	0x0003088c
+   23c00:	00031ff8 	.word	0x00031ff8
 
 00023c04 <get_addresses>:
 {
@@ -83059,10 +83060,10 @@ static void tcp_sent_cb(struct net_context *context,
    23c84:	f7df f96e 	bl	2f64 <snprintk>
    23c88:	e7cb      	b.n	23c22 <get_addresses+0x1e>
    23c8a:	bf00      	nop
-   23c8c:	0002fc54 	.word	0x0002fc54
-   23c90:	0002fc48 	.word	0x0002fc48
+   23c8c:	000313c0 	.word	0x000313c0
+   23c90:	000313b4 	.word	0x000313b4
    23c94:	200023c0 	.word	0x200023c0
-   23c98:	0002fc40 	.word	0x0002fc40
+   23c98:	000313ac 	.word	0x000313ac
 
 00023c9c <print_connect_info>:
 {
@@ -83115,11 +83116,11 @@ static void tcp_sent_cb(struct net_context *context,
    23cf6:	f7df f927 	bl	2f48 <printk>
 		break;
    23cfa:	bd70      	pop	{r4, r5, r6, pc}
-   23cfc:	00030824 	.word	0x00030824
-   23d00:	000307e8 	.word	0x000307e8
+   23cfc:	00031f90 	.word	0x00031f90
+   23d00:	00031f54 	.word	0x00031f54
    23d04:	200023c0 	.word	0x200023c0
-   23d08:	000307fc 	.word	0x000307fc
-   23d0c:	00030818 	.word	0x00030818
+   23d08:	00031f68 	.word	0x00031f68
+   23d0c:	00031f84 	.word	0x00031f84
 
 00023d10 <context_cb>:
 {
@@ -83207,7 +83208,7 @@ static void tcp_sent_cb(struct net_context *context,
    23da2:	e7e1      	b.n	23d68 <context_cb+0x58>
    23da4:	2755      	movs	r7, #85	; 0x55
    23da6:	e7e2      	b.n	23d6e <context_cb+0x5e>
-   23da8:	0002fc00 	.word	0x0002fc00
+   23da8:	0003136c 	.word	0x0003136c
 
 00023dac <net_shell_cmd_iface>:
 {
@@ -83298,16 +83299,16 @@ static void tcp_sent_cb(struct net_context *context,
    23e48:	480a      	ldr	r0, [pc, #40]	; (23e74 <net_shell_cmd_mem+0xa0>)
    23e4a:	f7df f87d 	bl	2f48 <printk>
    23e4e:	e7f7      	b.n	23e40 <net_shell_cmd_mem+0x6c>
-   23e50:	000301a4 	.word	0x000301a4
-   23e54:	000301c0 	.word	0x000301c0
-   23e58:	000301d8 	.word	0x000301d8
-   23e5c:	00030204 	.word	0x00030204
-   23e60:	0003021c 	.word	0x0003021c
-   23e64:	00030228 	.word	0x00030228
-   23e68:	00030234 	.word	0x00030234
-   23e6c:	00030244 	.word	0x00030244
+   23e50:	00031910 	.word	0x00031910
+   23e54:	0003192c 	.word	0x0003192c
+   23e58:	00031944 	.word	0x00031944
+   23e5c:	00031970 	.word	0x00031970
+   23e60:	00031988 	.word	0x00031988
+   23e64:	00031994 	.word	0x00031994
+   23e68:	000319a0 	.word	0x000319a0
+   23e6c:	000319b0 	.word	0x000319b0
    23e70:	00023841 	.word	0x00023841
-   23e74:	00030254 	.word	0x00030254
+   23e74:	000319c0 	.word	0x000319c0
 
 00023e78 <net_shell_cmd_nbr>:
 {
@@ -83390,15 +83391,15 @@ static void tcp_sent_cb(struct net_context *context,
    23f00:	4809      	ldr	r0, [pc, #36]	; (23f28 <net_shell_cmd_nbr+0xb0>)
    23f02:	f7df f821 	bl	2f48 <printk>
    23f06:	e7df      	b.n	23ec8 <net_shell_cmd_nbr+0x50>
-   23f08:	00030278 	.word	0x00030278
+   23f08:	000319e4 	.word	0x000319e4
    23f0c:	200023c0 	.word	0x200023c0
-   23f10:	000302c8 	.word	0x000302c8
+   23f10:	00031a34 	.word	0x00031a34
    23f14:	00023fd1 	.word	0x00023fd1
-   23f18:	0003027c 	.word	0x0003027c
-   23f1c:	00030294 	.word	0x00030294
-   23f20:	000302b4 	.word	0x000302b4
-   23f24:	000302e4 	.word	0x000302e4
-   23f28:	000302fc 	.word	0x000302fc
+   23f18:	000319e8 	.word	0x000319e8
+   23f1c:	00031a00 	.word	0x00031a00
+   23f20:	00031a20 	.word	0x00031a20
+   23f24:	00031a50 	.word	0x00031a50
+   23f28:	00031a68 	.word	0x00031a68
 
 00023f2c <route_cb>:
 {
@@ -83481,12 +83482,12 @@ static void tcp_sent_cb(struct net_context *context,
    23fae:	f7de ffcb 	bl	2f48 <printk>
    23fb2:	e7bf      	b.n	23f34 <route_cb+0x8>
    23fb4:	200023c0 	.word	0x200023c0
-   23fb8:	00030844 	.word	0x00030844
-   23fbc:	0003086c 	.word	0x0003086c
-   23fc0:	0003085c 	.word	0x0003085c
+   23fb8:	00031fb0 	.word	0x00031fb0
+   23fbc:	00031fd8 	.word	0x00031fd8
+   23fc0:	00031fc8 	.word	0x00031fc8
    23fc4:	200023a8 	.word	0x200023a8
-   23fc8:	00030880 	.word	0x00030880
-   23fcc:	0002fd80 	.word	0x0002fd80
+   23fc8:	00031fec 	.word	0x00031fec
+   23fcc:	000314ec 	.word	0x000314ec
 
 00023fd0 <nbr_cb>:
 {
@@ -83592,11 +83593,11 @@ static void tcp_sent_cb(struct net_context *context,
    2409a:	e7d1      	b.n	24040 <nbr_cb+0x70>
    2409c:	200023a8 	.word	0x200023a8
    240a0:	200023c0 	.word	0x200023c0
-   240a4:	0002f390 	.word	0x0002f390
-   240a8:	0002ff34 	.word	0x0002ff34
-   240ac:	0002fedc 	.word	0x0002fedc
-   240b0:	0002fed0 	.word	0x0002fed0
-   240b4:	0002fed8 	.word	0x0002fed8
+   240a4:	00030afc 	.word	0x00030afc
+   240a8:	000316a0 	.word	0x000316a0
+   240ac:	00031648 	.word	0x00031648
+   240b0:	0003163c 	.word	0x0003163c
+   240b4:	00031644 	.word	0x00031644
 
 000240b8 <_ping_ipv6>:
 {
@@ -83664,7 +83665,7 @@ static void tcp_sent_cb(struct net_context *context,
    24124:	e7f5      	b.n	24112 <_ping_ipv6+0x5a>
    24126:	bf00      	nop
    24128:	2000c48c 	.word	0x2000c48c
-   2412c:	0002fbec 	.word	0x0002fbec
+   2412c:	00031358 	.word	0x00031358
 
 00024130 <net_shell_cmd_ping>:
 {
@@ -83712,11 +83713,11 @@ K_SYSCALL_DECLARE2(K_SYSCALL_K_SEM_TAKE, k_sem_take, int, struct k_sem *, sem, s
    24178:	4806      	ldr	r0, [pc, #24]	; (24194 <net_shell_cmd_ping+0x64>)
    2417a:	f7f9 fdc5 	bl	1dd08 <net_icmpv6_unregister_handler>
    2417e:	e7e8      	b.n	24152 <net_shell_cmd_ping+0x22>
-   24180:	0003030c 	.word	0x0003030c
-   24184:	0003032c 	.word	0x0003032c
-   24188:	00030314 	.word	0x00030314
+   24180:	00031a78 	.word	0x00031a78
+   24184:	00031a98 	.word	0x00031a98
+   24188:	00031a80 	.word	0x00031a80
    2418c:	2000cfd4 	.word	0x2000cfd4
-   24190:	00030340 	.word	0x00030340
+   24190:	00031aac 	.word	0x00031aac
    24194:	2000c48c 	.word	0x2000c48c
 
 00024198 <_handle_ipv6_echo_reply>:
@@ -83763,7 +83764,7 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_SEM_GIVE, k_sem_give, struct k_sem *, sem);
    241e6:	bd30      	pop	{r4, r5, pc}
    241e8:	200023c0 	.word	0x200023c0
    241ec:	0002eecc 	.word	0x0002eecc
-   241f0:	0002fbc8 	.word	0x0002fbc8
+   241f0:	00031334 	.word	0x00031334
    241f4:	2000cfd4 	.word	0x2000cfd4
    241f8:	2000c48c 	.word	0x2000c48c
 
@@ -83791,8 +83792,8 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_SEM_GIVE, k_sem_give, struct k_sem *, sem);
    24222:	b002      	add	sp, #8
    24224:	bd10      	pop	{r4, pc}
    24226:	bf00      	nop
-   24228:	0002fe80 	.word	0x0002fe80
-   2422c:	0002fea4 	.word	0x0002fea4
+   24228:	000315ec 	.word	0x000315ec
+   2422c:	00031610 	.word	0x00031610
    24230:	00023f2d 	.word	0x00023f2d
 
 00024234 <tcp_connected>:
@@ -83817,8 +83818,8 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_SEM_GIVE, k_sem_give, struct k_sem *, sem);
    24252:	4b03      	ldr	r3, [pc, #12]	; (24260 <tcp_connected+0x2c>)
    24254:	601a      	str	r2, [r3, #0]
    24256:	bd10      	pop	{r4, pc}
-   24258:	00030920 	.word	0x00030920
-   2425c:	00030904 	.word	0x00030904
+   24258:	0003208c 	.word	0x0003208c
+   2425c:	00032070 	.word	0x00032070
    24260:	200023e8 	.word	0x200023e8
 
 00024264 <get_my_ipv6_addr>:
@@ -83933,9 +83934,9 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_SEM_GIVE, k_sem_give, struct k_sem *, sem);
    24324:	e7ed      	b.n	24302 <tcp_connect+0x82>
    24326:	bf00      	nop
    24328:	00024235 	.word	0x00024235
-   2432c:	000308b4 	.word	0x000308b4
-   24330:	000308cc 	.word	0x000308cc
-   24334:	000308ec 	.word	0x000308ec
+   2432c:	00032020 	.word	0x00032020
+   24330:	00032038 	.word	0x00032038
+   24334:	00032058 	.word	0x00032058
 
 00024338 <net_shell_cmd_tcp>:
 }
@@ -84163,27 +84164,27 @@ int net_shell_cmd_tcp(int argc, char *argv[])
 	return 0;
    24494:	2500      	movs	r5, #0
    24496:	e771      	b.n	2437c <net_shell_cmd_tcp+0x44>
-   24498:	0002f020 	.word	0x0002f020
+   24498:	0003078c 	.word	0x0003078c
    2449c:	200023e8 	.word	0x200023e8
-   244a0:	00030684 	.word	0x00030684
-   244a4:	00030698 	.word	0x00030698
-   244a8:	000306b4 	.word	0x000306b4
-   244ac:	000306c8 	.word	0x000306c8
-   244b0:	00030718 	.word	0x00030718
-   244b4:	000306d0 	.word	0x000306d0
-   244b8:	000306e0 	.word	0x000306e0
-   244bc:	000306f4 	.word	0x000306f4
+   244a0:	00031df0 	.word	0x00031df0
+   244a4:	00031e04 	.word	0x00031e04
+   244a8:	00031e20 	.word	0x00031e20
+   244ac:	00031e34 	.word	0x00031e34
+   244b0:	00031e84 	.word	0x00031e84
+   244b4:	00031e3c 	.word	0x00031e3c
+   244b8:	00031e4c 	.word	0x00031e4c
+   244bc:	00031e60 	.word	0x00031e60
    244c0:	00023b25 	.word	0x00023b25
-   244c4:	00030738 	.word	0x00030738
-   244c8:	00030750 	.word	0x00030750
-   244cc:	0003077c 	.word	0x0003077c
-   244d0:	00030758 	.word	0x00030758
-   244d4:	0003027c 	.word	0x0003027c
-   244d8:	00030790 	.word	0x00030790
-   244dc:	000307a4 	.word	0x000307a4
-   244e0:	000307ac 	.word	0x000307ac
-   244e4:	000307c8 	.word	0x000307c8
-   244e8:	000307dc 	.word	0x000307dc
+   244c4:	00031ea4 	.word	0x00031ea4
+   244c8:	00031ebc 	.word	0x00031ebc
+   244cc:	00031ee8 	.word	0x00031ee8
+   244d0:	00031ec4 	.word	0x00031ec4
+   244d4:	000319e8 	.word	0x000319e8
+   244d8:	00031efc 	.word	0x00031efc
+   244dc:	00031f10 	.word	0x00031f10
+   244e0:	00031f18 	.word	0x00031f18
+   244e4:	00031f34 	.word	0x00031f34
+   244e8:	00031f48 	.word	0x00031f48
 
 000244ec <find_conn_handler>:
 static int find_conn_handler(enum net_ip_protocol proto,
@@ -85927,13 +85928,13 @@ int unpack_zerolen_validate(u8_t *buf, u16_t length,
    24f7c:	4618      	mov	r0, r3
    24f7e:	b007      	add	sp, #28
    24f80:	e8bd 83f0 	ldmia.w	sp!, {r4, r5, r6, r7, r8, r9, pc}
-   24f84:	00030940 	.word	0x00030940
-   24f88:	00030954 	.word	0x00030954
-   24f8c:	0003096c 	.word	0x0003096c
-   24f90:	00030994 	.word	0x00030994
-   24f94:	000309b8 	.word	0x000309b8
-   24f98:	00030a00 	.word	0x00030a00
-   24f9c:	00030a2c 	.word	0x00030a2c
+   24f84:	000320ac 	.word	0x000320ac
+   24f88:	000320c0 	.word	0x000320c0
+   24f8c:	000320d8 	.word	0x000320d8
+   24f90:	00032100 	.word	0x00032100
+   24f94:	00032124 	.word	0x00032124
+   24f98:	0003216c 	.word	0x0003216c
+   24f9c:	00032198 	.word	0x00032198
 
 00024fa0 <mqtt_pack_publish>:
 {
@@ -87496,7 +87497,7 @@ static int init_net_app(struct device *device)
 	return ret;
 }
    258de:	bd08      	pop	{r3, pc}
-   258e0:	00030a44 	.word	0x00030a44
+   258e0:	000321b0 	.word	0x000321b0
 
 000258e4 <try_resolve>:
 		NET_ERR("Cannot resolve %s (%d)", peer_addr_str, ret);
@@ -87659,7 +87660,7 @@ static void close_net_ctx(struct net_app_ctx *ctx)
 			return -EINVAL;
    2599e:	f06f 0015 	mvn.w	r0, #21
    259a2:	bd70      	pop	{r4, r5, r6, pc}
-   259a4:	00030a5c 	.word	0x00030a5c
+   259a4:	000321c8 	.word	0x000321c8
 
 000259a8 <_app_connected>:
 }
@@ -88741,9 +88742,9 @@ int _net_app_bt_setup(void)
 		return -EINVAL;
    25fd2:	f06f 0315 	mvn.w	r3, #21
    25fd6:	e7f0      	b.n	25fba <_net_app_bt_setup+0x32>
-   25fd8:	0002f738 	.word	0x0002f738
+   25fd8:	00030ea4 	.word	0x00030ea4
    25fdc:	2000c4ac 	.word	0x2000c4ac
-   25fe0:	0002fb60 	.word	0x0002fb60
+   25fe0:	000312cc 	.word	0x000312cc
    25fe4:	61550001 	.word	0x61550001
 
 00025fe8 <shell_run>:
@@ -88763,7 +88764,7 @@ int shell_run(struct device *dev)
 }
    25ff0:	2000      	movs	r0, #0
    25ff2:	bd08      	pop	{r3, pc}
-   25ff4:	00030a60 	.word	0x00030a60
+   25ff4:	000321cc 	.word	0x000321cc
 
 00025ff8 <get_prompt>:
 
@@ -88877,8 +88878,8 @@ static int exit_module(int argc, char *argv[])
    26090:	d1ef      	bne.n	26072 <print_module_commands+0xe>
 }
    26092:	bd38      	pop	{r3, r4, r5, pc}
-   26094:	00030b1c 	.word	0x00030b1c
-   26098:	0002fd38 	.word	0x0002fd38
+   26094:	00032288 	.word	0x00032288
+   26098:	000314a4 	.word	0x000314a4
    2609c:	2000cf78 	.word	0x2000cf78
 
 000260a0 <line2argv>:
@@ -88951,7 +88952,7 @@ static int exit_module(int argc, char *argv[])
    26102:	2500      	movs	r5, #0
    26104:	e7d4      	b.n	260b0 <line2argv+0x10>
    26106:	bf00      	nop
-   26108:	00030afc 	.word	0x00030afc
+   26108:	00032268 	.word	0x00032268
 
 0002610c <get_destination_module>:
 {
@@ -89035,9 +89036,9 @@ static int exit_module(int argc, char *argv[])
    2619e:	bd38      	pop	{r3, r4, r5, pc}
    261a0:	2000c4b8 	.word	0x2000c4b8
    261a4:	200025b8 	.word	0x200025b8
-   261a8:	00030b84 	.word	0x00030b84
-   261ac:	00030b24 	.word	0x00030b24
-   261b0:	00030b58 	.word	0x00030b58
+   261a8:	000322f0 	.word	0x000322f0
+   261ac:	00032290 	.word	0x00032290
+   261b0:	000322c4 	.word	0x000322c4
 
 000261b4 <select_module>:
 {
@@ -89118,9 +89119,9 @@ static int exit_module(int argc, char *argv[])
    2622c:	bd38      	pop	{r3, r4, r5, pc}
    2622e:	bf00      	nop
    26230:	2000c4b8 	.word	0x2000c4b8
-   26234:	00030ab4 	.word	0x00030ab4
-   26238:	00030acc 	.word	0x00030acc
-   2623c:	00030ae8 	.word	0x00030ae8
+   26234:	00032220 	.word	0x00032220
+   26238:	00032238 	.word	0x00032238
+   2623c:	00032254 	.word	0x00032254
 
 00026240 <get_cb>:
 
@@ -89255,15 +89256,15 @@ static shell_cmd_function_t get_cb(int *argc, char *argv[], int *module)
    262f4:	2000      	movs	r0, #0
 }
    262f6:	bdf8      	pop	{r3, r4, r5, r6, r7, pc}
-   262f8:	00030a88 	.word	0x00030a88
+   262f8:	000321f4 	.word	0x000321f4
    262fc:	000263c1 	.word	0x000263c1
-   26300:	00030a74 	.word	0x00030a74
-   26304:	00030a90 	.word	0x00030a90
+   26300:	000321e0 	.word	0x000321e0
+   26304:	000321fc 	.word	0x000321fc
    26308:	000261b5 	.word	0x000261b5
-   2630c:	00030a98 	.word	0x00030a98
+   2630c:	00032204 	.word	0x00032204
    26310:	2000cf78 	.word	0x2000cf78
    26314:	2000c4b8 	.word	0x2000c4b8
-   26318:	00030aa0 	.word	0x00030aa0
+   26318:	0003220c 	.word	0x0003220c
    2631c:	0002604d 	.word	0x0002604d
 
 00026320 <show_cmd_help>:
@@ -89340,9 +89341,9 @@ static shell_cmd_function_t get_cb(int *argc, char *argv[], int *module)
    263ac:	e7f5      	b.n	2639a <show_cmd_help+0x7a>
    263ae:	bf00      	nop
    263b0:	2000cf78 	.word	0x2000cf78
-   263b4:	00030bb4 	.word	0x00030bb4
-   263b8:	0002f390 	.word	0x0002f390
-   263bc:	00030acc 	.word	0x00030acc
+   263b4:	00032320 	.word	0x00032320
+   263b8:	00030afc 	.word	0x00030afc
+   263bc:	00032238 	.word	0x00032238
 
 000263c0 <show_help>:
 {
@@ -89427,14 +89428,14 @@ static shell_cmd_function_t get_cb(int *argc, char *argv[], int *module)
    26454:	bd10      	pop	{r4, pc}
    26456:	bf00      	nop
    26458:	2000c4b8 	.word	0x2000c4b8
-   2645c:	00030be4 	.word	0x00030be4
-   26460:	00030bbc 	.word	0x00030bbc
-   26464:	00030ae8 	.word	0x00030ae8
+   2645c:	00032350 	.word	0x00032350
+   26460:	00032328 	.word	0x00032328
+   26464:	00032254 	.word	0x00032254
    26468:	2000cf78 	.word	0x2000cf78
-   2646c:	0002fd38 	.word	0x0002fd38
+   2646c:	000314a4 	.word	0x000314a4
    26470:	2000cf84 	.word	0x2000cf84
    26474:	aaaaaaab 	.word	0xaaaaaaab
-   26478:	00030bf8 	.word	0x00030bf8
+   26478:	00032364 	.word	0x00032364
 
 0002647c <get_command_to_complete>:
 		k_fifo_put(&avail_queue, cmd);
@@ -89742,11 +89743,11 @@ static u8_t completion(char *line, u8_t len)
    26660:	2000      	movs	r0, #0
    26662:	e75e      	b.n	26522 <completion+0xe>
    26664:	2000cf78 	.word	0x2000cf78
-   26668:	00030a68 	.word	0x00030a68
-   2666c:	0002fd38 	.word	0x0002fd38
+   26668:	000321d4 	.word	0x000321d4
+   2666c:	000314a4 	.word	0x000314a4
    26670:	0002eecc 	.word	0x0002eecc
-   26674:	00030a70 	.word	0x00030a70
-   26678:	000310bc 	.word	0x000310bc
+   26674:	000321dc 	.word	0x000321dc
+   26678:	00032828 	.word	0x00032828
 
 0002667c <line_queue_init>:
 {
@@ -89847,8 +89848,8 @@ static u8_t completion(char *line, u8_t len)
    26722:	bf00      	nop
    26724:	2000c4b8 	.word	0x2000c4b8
    26728:	20002404 	.word	0x20002404
-   2672c:	00030acc 	.word	0x00030acc
-   26730:	00030b88 	.word	0x00030b88
+   2672c:	00032238 	.word	0x00032238
+   26730:	000322f4 	.word	0x000322f4
 
 00026734 <shell>:
 {
@@ -89940,7 +89941,7 @@ K_SYSCALL_DECLARE10(K_SYSCALL_K_THREAD_CREATE, k_thread_create, k_tid_t, struct 
    267cc:	20009ae8 	.word	0x20009ae8
    267d0:	200025d4 	.word	0x200025d4
    267d4:	00026515 	.word	0x00026515
-   267d8:	0002f390 	.word	0x0002f390
+   267d8:	00030afc 	.word	0x00030afc
 
 000267dc <ftpan_32>:
 #define __SYSTEM_CLOCK_64M (64000000UL)
@@ -90694,7 +90695,7 @@ _oops:
     ldr r1, =_kernel
    26b24:	20002710 	.word	0x20002710
     ldr r1, =_k_neg_eagain
-   26b28:	00031090 	.word	0x00031090
+   26b28:	000327fc 	.word	0x000327fc
 
 00026b2c <_DebugMonitor>:
  * See _FaultDump() for example.
@@ -90711,7 +90712,7 @@ static void _DebugMonitor(const NANO_ESF *esf)
    26b30:	f7dc fa0a 	bl	2f48 <printk>
    26b34:	bd08      	pop	{r3, pc}
    26b36:	bf00      	nop
-   26b38:	00030ccc 	.word	0x00030ccc
+   26b38:	00032438 	.word	0x00032438
 
 00026b3c <_ReservedException>:
  * See _FaultDump() for example.
@@ -90734,9 +90735,9 @@ static void _ReservedException(const NANO_ESF *esf, int fault)
    26b4e:	bd08      	pop	{r3, pc}
    26b50:	4902      	ldr	r1, [pc, #8]	; (26b5c <_ReservedException+0x20>)
    26b52:	e7f8      	b.n	26b46 <_ReservedException+0xa>
-   26b54:	00030e54 	.word	0x00030e54
-   26b58:	00030e70 	.word	0x00030e70
-   26b5c:	00030e3c 	.word	0x00030e3c
+   26b54:	000325c0 	.word	0x000325c0
+   26b58:	000325dc 	.word	0x000325dc
+   26b5c:	000325a8 	.word	0x000325a8
 
 00026b60 <_FaultThreadShow>:
 {
@@ -90750,7 +90751,7 @@ K_SYSCALL_DECLARE0(K_SYSCALL_K_CURRENT_GET, k_current_get, k_tid_t);
    26b6c:	4801      	ldr	r0, [pc, #4]	; (26b74 <_FaultThreadShow+0x14>)
    26b6e:	f7dc f9eb 	bl	2f48 <printk>
    26b72:	bd10      	pop	{r4, pc}
-   26b74:	00030d04 	.word	0x00030d04
+   26b74:	00032470 	.word	0x00032470
 
 00026b78 <_MpuFault>:
 {
@@ -90820,13 +90821,13 @@ K_SYSCALL_DECLARE0(K_SYSCALL_K_CURRENT_GET, k_current_get, k_tid_t);
 }
    26bf4:	e7dd      	b.n	26bb2 <_MpuFault+0x3a>
    26bf6:	bf00      	nop
-   26bf8:	00030dac 	.word	0x00030dac
+   26bf8:	00032518 	.word	0x00032518
    26bfc:	e000ed00 	.word	0xe000ed00
-   26c00:	00030dc4 	.word	0x00030dc4
-   26c04:	00030dd8 	.word	0x00030dd8
-   26c08:	00030dec 	.word	0x00030dec
-   26c0c:	00030e08 	.word	0x00030e08
-   26c10:	00030e1c 	.word	0x00030e1c
+   26c00:	00032530 	.word	0x00032530
+   26c04:	00032544 	.word	0x00032544
+   26c08:	00032558 	.word	0x00032558
+   26c0c:	00032574 	.word	0x00032574
+   26c10:	00032588 	.word	0x00032588
 
 00026c14 <_BusFault>:
 {
@@ -90914,14 +90915,14 @@ K_SYSCALL_DECLARE0(K_SYSCALL_K_CURRENT_GET, k_current_get, k_tid_t);
 }
    26cb4:	e7d0      	b.n	26c58 <_BusFault+0x44>
    26cb6:	bf00      	nop
-   26cb8:	00030c60 	.word	0x00030c60
+   26cb8:	000323cc 	.word	0x000323cc
    26cbc:	e000ed00 	.word	0xe000ed00
-   26cc0:	00030dc4 	.word	0x00030dc4
-   26cc4:	00030dd8 	.word	0x00030dd8
-   26cc8:	00030c78 	.word	0x00030c78
-   26ccc:	00030c94 	.word	0x00030c94
-   26cd0:	00030e08 	.word	0x00030e08
-   26cd4:	00030cb0 	.word	0x00030cb0
+   26cc0:	00032530 	.word	0x00032530
+   26cc4:	00032544 	.word	0x00032544
+   26cc8:	000323e4 	.word	0x000323e4
+   26ccc:	00032400 	.word	0x00032400
+   26cd0:	00032574 	.word	0x00032574
+   26cd4:	0003241c 	.word	0x0003241c
 
 00026cd8 <_UsageFault>:
 {
@@ -90994,14 +90995,14 @@ K_SYSCALL_DECLARE0(K_SYSCALL_K_CURRENT_GET, k_current_get, k_tid_t);
    26d5c:	4808      	ldr	r0, [pc, #32]	; (26d80 <_UsageFault+0xa8>)
    26d5e:	f7dc f8f3 	bl	2f48 <printk>
    26d62:	e7df      	b.n	26d24 <_UsageFault+0x4c>
-   26d64:	00030e84 	.word	0x00030e84
+   26d64:	000325f0 	.word	0x000325f0
    26d68:	e000ed00 	.word	0xe000ed00
-   26d6c:	00030ea0 	.word	0x00030ea0
-   26d70:	00030eb4 	.word	0x00030eb4
-   26d74:	00030ed0 	.word	0x00030ed0
-   26d78:	00030ef0 	.word	0x00030ef0
-   26d7c:	00030f18 	.word	0x00030f18
-   26d80:	00030f34 	.word	0x00030f34
+   26d6c:	0003260c 	.word	0x0003260c
+   26d70:	00032620 	.word	0x00032620
+   26d74:	0003263c 	.word	0x0003263c
+   26d78:	0003265c 	.word	0x0003265c
+   26d7c:	00032684 	.word	0x00032684
+   26d80:	000326a0 	.word	0x000326a0
 
 00026d84 <_HardFault>:
 {
@@ -91057,10 +91058,10 @@ K_SYSCALL_DECLARE0(K_SYSCALL_K_CURRENT_GET, k_current_get, k_tid_t);
    26ddc:	4620      	mov	r0, r4
    26dde:	f7ff ff19 	bl	26c14 <_BusFault>
    26de2:	bd10      	pop	{r4, pc}
-   26de4:	00030d50 	.word	0x00030d50
+   26de4:	000324bc 	.word	0x000324bc
    26de8:	e000ed00 	.word	0xe000ed00
-   26dec:	00030d68 	.word	0x00030d68
-   26df0:	00030d8c 	.word	0x00030d8c
+   26dec:	000324d4 	.word	0x000324d4
+   26df0:	000324f8 	.word	0x000324f8
    26df4:	e000ed28 	.word	0xe000ed28
    26df8:	e000ed29 	.word	0xe000ed29
    26dfc:	e000ed2c 	.word	0xe000ed2c
@@ -91529,11 +91530,11 @@ void _NanoFatalErrorHandler(unsigned int reason,
 		break;
    26ff4:	e7eb      	b.n	26fce <_NanoFatalErrorHandler+0x22>
    26ff6:	bf00      	nop
-   26ff8:	00030fc0 	.word	0x00030fc0
-   26ffc:	00030f60 	.word	0x00030f60
-   27000:	00030fe4 	.word	0x00030fe4
-   27004:	00030f88 	.word	0x00030f88
-   27008:	00030fa4 	.word	0x00030fa4
+   26ff8:	0003272c 	.word	0x0003272c
+   26ffc:	000326cc 	.word	0x000326cc
+   27000:	00032750 	.word	0x00032750
+   27004:	000326f4 	.word	0x000326f4
+   27008:	00032710 	.word	0x00032710
 
 0002700c <_do_kernel_oops>:
 }
@@ -91599,11 +91600,11 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_THREAD_ABORT, k_thread_abort, k_tid_t, threa
    2704e:	f000 f80b 	bl	27068 <_impl_k_thread_abort>
 	return;
    27052:	bd10      	pop	{r4, pc}
-   27054:	00030430 	.word	0x00030430
-   27058:	00031034 	.word	0x00031034
-   2705c:	00031020 	.word	0x00031020
+   27054:	00031b9c 	.word	0x00031b9c
+   27058:	000327a0 	.word	0x000327a0
+   2705c:	0003278c 	.word	0x0003278c
    27060:	20002710 	.word	0x20002710
-   27064:	00031054 	.word	0x00031054
+   27064:	000327c0 	.word	0x000327c0
 
 00027068 <_impl_k_thread_abort>:
 #include <misc/__assert.h>
@@ -92015,7 +92016,7 @@ void _sys_device_do_config_level(int level)
 	}
 }
    27206:	bd38      	pop	{r3, r4, r5, pc}
-   27208:	0003107c 	.word	0x0003107c
+   27208:	000327e8 	.word	0x000327e8
 
 0002720c <device_get_binding>:
 
@@ -92483,17 +92484,17 @@ static ALWAYS_INLINE void _MspSet(u32_t msp /* value to store in MSP */
    274b8:	b005      	add	sp, #20
    274ba:	f85d fb04 	ldr.w	pc, [sp], #4
    274be:	bf00      	nop
-   274c0:	00031098 	.word	0x00031098
+   274c0:	00032804 	.word	0x00032804
    274c4:	2000a2b8 	.word	0x2000a2b8
-   274c8:	000310a8 	.word	0x000310a8
-   274cc:	0002f448 	.word	0x0002f448
+   274c8:	00032814 	.word	0x00032814
+   274cc:	00030bb4 	.word	0x00030bb4
    274d0:	2000aab8 	.word	0x2000aab8
    274d4:	cccccccd 	.word	0xcccccccd
-   274d8:	000310b4 	.word	0x000310b4
+   274d8:	00032820 	.word	0x00032820
    274dc:	2000abf8 	.word	0x2000abf8
-   274e0:	000310c0 	.word	0x000310c0
+   274e0:	0003282c 	.word	0x0003282c
    274e4:	2000b3f8 	.word	0x2000b3f8
-   274e8:	000310cc 	.word	0x000310cc
+   274e8:	00032838 	.word	0x00032838
 
 000274ec <_bss_zero>:
 {
@@ -92522,7 +92523,7 @@ static ALWAYS_INLINE void _MspSet(u32_t msp /* value to store in MSP */
    27512:	bd08      	pop	{r3, pc}
    27514:	2000b7f8 	.word	0x2000b7f8
    27518:	2000d454 	.word	0x2000d454
-   2751c:	0003152c 	.word	0x0003152c
+   2751c:	00032c9c 	.word	0x00032c9c
 
 00027520 <_main>:
 {
@@ -95175,7 +95176,7 @@ k_tid_t _impl_k_current_get(void)
    28470:	4770      	bx	lr
    28472:	bf00      	nop
    28474:	20002830 	.word	0x20002830
-   28478:	00031094 	.word	0x00031094
+   28478:	00032800 	.word	0x00032800
    2847c:	20002834 	.word	0x20002834
    28480:	20002710 	.word	0x20002710
 
@@ -98410,9 +98411,9 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    298cc:	413921fb 	.word	0x413921fb
    298d0:	7fefffff 	.word	0x7fefffff
    298d4:	41700000 	.word	0x41700000
-   298d8:	00031158 	.word	0x00031158
+   298d8:	000328c4 	.word	0x000328c4
    298dc:	3fe00000 	.word	0x3fe00000
-   298e0:	000310d8 	.word	0x000310d8
+   298e0:	00032844 	.word	0x00032844
    298e4:	e9dd 2302 	ldrd	r2, r3, [sp, #8]
    298e8:	4640      	mov	r0, r8
    298ea:	4649      	mov	r1, r9
@@ -99015,7 +99016,7 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    29f52:	f3c3 0316 	ubfx	r3, r3, #0, #23
    29f56:	f841 3022 	str.w	r3, [r1, r2, lsl #2]
    29f5a:	e258      	b.n	2a40e <__kernel_rem_pio2+0x72e>
-   29f5c:	000312a0 	.word	0x000312a0
+   29f5c:	00032a10 	.word	0x00032a10
    29f60:	2aaaaaab 	.word	0x2aaaaaab
    29f64:	3e700000 	.word	0x3e700000
    29f68:	41700000 	.word	0x41700000
@@ -99258,7 +99259,7 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2a1d8:	3ff00000 	.word	0x3ff00000
    2a1dc:	3fe00000 	.word	0x3fe00000
    2a1e0:	3e700000 	.word	0x3e700000
-   2a1e4:	00031268 	.word	0x00031268
+   2a1e4:	000329d8 	.word	0x000329d8
    2a1e8:	9b00      	ldr	r3, [sp, #0]
    2a1ea:	2b00      	cmp	r3, #0
    2a1ec:	f340 81a4 	ble.w	2a538 <__kernel_rem_pio2+0x858>
@@ -101847,9 +101848,9 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2bbb8:	930f      	str	r3, [sp, #60]	; 0x3c
    2bbba:	f89a 3000 	ldrb.w	r3, [sl]
    2bbbe:	e5a3      	b.n	2b708 <_svfprintf_r+0xb0>
-   2bbc0:	000312fc 	.word	0x000312fc
-   2bbc4:	0003130c 	.word	0x0003130c
-   2bbc8:	000312e0 	.word	0x000312e0
+   2bbc0:	00032a6c 	.word	0x00032a6c
+   2bbc4:	00032a7c 	.word	0x00032a7c
+   2bbc8:	00032a50 	.word	0x00032a50
    2bbcc:	f04b 0b10 	orr.w	fp, fp, #16
    2bbd0:	f01b 0f20 	tst.w	fp, #32
    2bbd4:	9311      	str	r3, [sp, #68]	; 0x44
@@ -102179,13 +102180,13 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2bf4c:	f8dd b030 	ldr.w	fp, [sp, #48]	; 0x30
    2bf50:	9c0b      	ldr	r4, [sp, #44]	; 0x2c
    2bf52:	e013      	b.n	2bf7c <_svfprintf_r+0x924>
-   2bf54:	000312e0 	.word	0x000312e0
-   2bf58:	000312cc 	.word	0x000312cc
+   2bf54:	00032a50 	.word	0x00032a50
+   2bf58:	00032a3c 	.word	0x00032a3c
    2bf5c:	7fefffff 	.word	0x7fefffff
-   2bf60:	000312c0 	.word	0x000312c0
-   2bf64:	000312bc 	.word	0x000312bc
-   2bf68:	00030c5c 	.word	0x00030c5c
-   2bf6c:	0003130c 	.word	0x0003130c
+   2bf60:	00032a30 	.word	0x00032a30
+   2bf64:	00032a2c 	.word	0x00032a2c
+   2bf68:	000323c8 	.word	0x000323c8
+   2bf6c:	00032a7c 	.word	0x00032a7c
    2bf70:	f108 0808 	add.w	r8, r8, #8
    2bf74:	3e10      	subs	r6, #16
    2bf76:	2e10      	cmp	r6, #16
@@ -102503,7 +102504,7 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2c288:	f04f 0b10 	mov.w	fp, #16
    2c28c:	9c0c      	ldr	r4, [sp, #48]	; 0x30
    2c28e:	e006      	b.n	2c29e <_svfprintf_r+0xc46>
-   2c290:	0003130c 	.word	0x0003130c
+   2c290:	00032a7c 	.word	0x00032a7c
    2c294:	3e10      	subs	r6, #16
    2c296:	2e10      	cmp	r6, #16
    2c298:	f108 0808 	add.w	r8, r8, #8
@@ -102917,8 +102918,8 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2c67e:	46c8      	mov	r8, r9
    2c680:	e458      	b.n	2bf34 <_svfprintf_r+0x8dc>
    2c682:	bf00      	nop
-   2c684:	0003130c 	.word	0x0003130c
-   2c688:	00030c5c 	.word	0x00030c5c
+   2c684:	00032a7c 	.word	0x00032a7c
+   2c688:	000323c8 	.word	0x000323c8
    2c68c:	2140      	movs	r1, #64	; 0x40
    2c68e:	980c      	ldr	r0, [sp, #48]	; 0x30
    2c690:	f001 f9ea 	bl	2da68 <_malloc_r>
@@ -103294,10 +103295,10 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2ca20:	e5b6      	b.n	2c590 <_svfprintf_r+0xf38>
    2ca22:	bf00      	nop
    2ca24:	66666667 	.word	0x66666667
-   2ca28:	000312f4 	.word	0x000312f4
-   2ca2c:	0003130c 	.word	0x0003130c
-   2ca30:	000312c8 	.word	0x000312c8
-   2ca34:	000312c4 	.word	0x000312c4
+   2ca28:	00032a64 	.word	0x00032a64
+   2ca2c:	00032a7c 	.word	0x00032a7c
+   2ca30:	00032a38 	.word	0x00032a38
+   2ca34:	00032a34 	.word	0x00032a34
    2ca38:	9b0a      	ldr	r3, [sp, #40]	; 0x28
    2ca3a:	b913      	cbnz	r3, 2ca42 <_svfprintf_r+0x13ea>
    2ca3c:	f01b 0f01 	tst.w	fp, #1
@@ -103721,12 +103722,12 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2ce98:	509f79fb 	.word	0x509f79fb
    2ce9c:	3fd34413 	.word	0x3fd34413
    2cea0:	7ff00000 	.word	0x7ff00000
-   2cea4:	00030c5d 	.word	0x00030c5d
-   2cea8:	00031420 	.word	0x00031420
-   2ceac:	0003142c 	.word	0x0003142c
+   2cea4:	000323c9 	.word	0x000323c9
+   2cea8:	00032b90 	.word	0x00032b90
+   2ceac:	00032b9c 	.word	0x00032b9c
    2ceb0:	3ff80000 	.word	0x3ff80000
-   2ceb4:	00031458 	.word	0x00031458
-   2ceb8:	00030c5c 	.word	0x00030c5c
+   2ceb4:	00032bc8 	.word	0x00032bc8
+   2ceb8:	000323c8 	.word	0x000323c8
    2cebc:	40240000 	.word	0x40240000
    2cec0:	f7d3 fe44 	bl	b4c <__aeabi_dmul>
    2cec4:	2200      	movs	r2, #0
@@ -104506,8 +104507,8 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2d658:	f8dd 902c 	ldr.w	r9, [sp, #44]	; 0x2c
    2d65c:	9c0c      	ldr	r4, [sp, #48]	; 0x30
    2d65e:	e48f      	b.n	2cf80 <_dtoa_r+0x388>
-   2d660:	00031458 	.word	0x00031458
-   2d664:	00031430 	.word	0x00031430
+   2d660:	00032bc8 	.word	0x00032bc8
+   2d664:	00032ba0 	.word	0x00032ba0
    2d668:	3ff00000 	.word	0x3ff00000
    2d66c:	401c0000 	.word	0x401c0000
    2d670:	3fe00000 	.word	0x3fe00000
@@ -104816,8 +104817,8 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2d990:	f7ff bba5 	b.w	2d0de <_dtoa_r+0x4e6>
    2d994:	401c0000 	.word	0x401c0000
    2d998:	40140000 	.word	0x40140000
-   2d99c:	00031458 	.word	0x00031458
-   2d9a0:	00031430 	.word	0x00031430
+   2d99c:	00032bc8 	.word	0x00032bc8
+   2d9a0:	00032ba0 	.word	0x00032ba0
    2d9a4:	3fe00000 	.word	0x3fe00000
    2d9a8:	40240000 	.word	0x40240000
    2d9ac:	2b39      	cmp	r3, #57	; 0x39
@@ -105779,7 +105780,7 @@ GEN_ABSOLUTE_SYM(_K_THREAD_NO_FLOAT_SIZEOF, sizeof(struct k_thread));
    2e32e:	6003      	str	r3, [r0, #0]
    2e330:	e7be      	b.n	2e2b0 <__pow5mult+0x18>
    2e332:	bf00      	nop
-   2e334:	00031520 	.word	0x00031520
+   2e334:	00032c90 	.word	0x00032c90
 
 0002e338 <__lshift>:
    2e338:	e92d 43f8 	stmdb	sp!, {r3, r4, r5, r6, r7, r8, r9, lr}
