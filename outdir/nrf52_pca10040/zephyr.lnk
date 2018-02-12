@@ -1,0 +1,14 @@
+-nostartfiles -nodefaultlibs -nostdlib -static -u _printf_float -no-pie -Wl,-X -Wl,-N -Wl,--gc-sections -Wl,--build-id=none
+-Wl,-Map=zephyr.map
+-L ./include/generated
+-u _OffsetAbsSyms -u _ConfigAbsSyms
+-e __start
+-Wl,--start-group
+-Wl,--whole-archive
+libapplication.a
+libzephyr.a
+-Wl,--no-whole-archive
+kernel/lib.a
+./arch/arm/core/offsets/offsets.o
+-Wl,--end-group
+-L /Users/sorchanolan/Developer/gcc-arm-none-eabi-6-2017-q2-update/bin/../lib/gcc/arm-none-eabi/6.3.1/thumb/v7e-m -L /Users/sorchanolan/Developer/gcc-arm-none-eabi-6-2017-q2-update/arm-none-eabi/lib/thumb/v7e-m  -lm  -lc  -lgcc
