@@ -6,10 +6,11 @@ public class RandomStringBuilder {
     StringBuilder printString = new StringBuilder();
     printString.append("{\n");
 
-    String stringSize = args[0];
+    int stringSize = Integer.valueOf(args[0]);
+    int numberOfStrings = Integer.valueOf(args[1]);
 
-    for (int i = 0; i < 1000; i++) {
-      printString.append("\"").append(getSaltString(Integer.valueOf(stringSize))).append("\", ");
+    for (int i = 0; i < numberOfStrings; i++) {
+      printString.append("\"").append(getSaltString(stringSize)).append("\", ");
       if ((i+1)%10==0)
         printString.append("\n");
     }

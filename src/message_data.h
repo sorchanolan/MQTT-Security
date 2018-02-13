@@ -3,7 +3,7 @@
 
 #include <zephyr.h>
 
-const char messages_5[1000][6] = {
+char messages_5[1000][6] = {
 "LHKQO", "EL9VY", "73CEO", "YZDSV", "B0FUC", "C9ILX", "7H34B", "PGOA0", "105MM", "C6RIC", 
 "A9PPH", "5WN30", "M3JDL", "8BTGG", "HRF3G", "MFYQF", "GFINN", "8LZH2", "N4II5", "Q6E03", 
 "M6YLS", "W5R22", "AZ7QG", "UF67W", "9M1OA", "YMK37", "2JO51", "57GSF", "C8JYN", "H9Y2N", 
@@ -104,6 +104,19 @@ const char messages_5[1000][6] = {
 "FDMNW", "XNXO3", "0PHWT", "PY8ZT", "HU1HY", "F8TKG", "H5J4B", "VI3BC", "O57GT", "LN733", 
 "GL7AS", "FRNXQ", "W69Q0", "4TJ20", "8KB0G", "L8P08", "DGH4V", "CKVFW", "G3G90", "JR6FH", 
 "V3EIZ", "1JJ6Z", "SW8AT", "0A2SZ", "AW4T7", "H0XSS", "5L7I4", "082RU", "S5AJP", "TCMOU", 
+};
+
+char messages_16[100][17] = {
+"YULfhXas5DAD1W0e", "TliX6RB4eyuGZRza", "Gv5BBQvjxDFNbjyk", "EWRmU941u4ONjJWU", "K1Tf7nxdOG2f1EDr", "pQIOy8YpYFvZhkIr", "batdHby905NlZTql", "2PC014X1BbM9gwWx", "5ecynH1jKeMS05RM", "4AbsgF56FJFQGKh6",
+"MSzH1yy82nN2TRCI", "ulatNoWW2EEMSTva", "pNAFzU4mNAzau48k", "YdwEg4j1TdjV9osS", "NY4ykIEV6aIscD5C", "SnKrl7LU0c1IL0tE", "03jboQ4bpn2Vs3Jy", "OjuqOCRm0KxAYNuN", "AQs07IOfOl6PEcYL", "AIGz1uptjTrrD8s5",
+"bsvNvINjR69CFIt1", "t6JXtNHS9KbmguLu", "Xb0nDVB2zimREWB4", "H68aluR92Z3yd4vc", "oPPxnVwCgJmNxW2K", "9LRlBBHVLBzGDBBy", "5Ihs6x1z49X9PSRm", "FU9XFS2aZfD4BSeZ", "zoHdQaD71UHog8st", "mZMzhyzOObbISk3D",
+"4xnziSbgJRZR2qYj", "gqjsUQclEOqC168q", "ZdZUMD629dfuTM37", "VxiiMaJpuhTPS2tv", "Cz5YRE4FzfY9uIZx", "KgqahNBSrsWImF5p", "k9v9KITweEIZpbtO", "dCqlLn8M5YiQBzVR", "IYMoz4Uf3jBRtvzG", "r907hoj6r8dYYAAK",
+"NKw4y1L94hTFtixJ", "Hddjepu4jln7opdn", "YUCnhyJjIFx79Z5H", "EJmjljqPzrQyybyW", "kZmdimcMZiGDIzS3", "BRIfAO309tIYynwq", "lzBoxQWfoJVJCfPC", "ttdS7H89DoptYESh", "ylz1AMzQeHTMiPo3", "evntJlFGgVbSJKZs",
+"fySFiFuHd6cvx8bs", "Myj9lLbYDF7XVMIq", "erJbJR1uKhvBtoaJ", "qGmfCSU5bRQrfWJf", "5zEsynOwHg7kvBde", "7WylVEbmSLp8VcTD", "Wias5fjr73dYjykL", "XzcEqW0PMjzznJLa", "7LkGHMO2XtGlqpQp", "QRh3kZ6fKZ75NxIN",
+"e8yutbiLc1AgIBms", "cbhCdLj2xWS7cUcB", "F6xnZBjQIWji5mdZ", "SawLFz4OB8Cx23dg", "dUAhq7OXN2mFdX1y", "XrX789VbyN8OLfM0", "5HV2wZ2mKaVxMHfC", "ZMiiMne66AkOMz77", "C1l3kyjxYycWFbzJ", "54ANRXjNpb4kUBLX",
+"tekiixzHSAL9SvTD", "HsQEWoELDQsrLgEQ", "ridlOKHZopnjLxpN", "y9sy2Zyp2b5jxDD4", "FOebSGd2YLg9gbo5", "8YXp2iNSWoe4njKH", "xrE6Q0cuEEjsqDlu", "dR2cBeYq1hlDPMsd", "eHcw6OKrOThNtLBX", "4cVMfj27UnOdoSzJ",
+"5aKDvacWIZLjSQNp", "OcDzSAuNOPwTJfbL", "H5tLbBe9MRDBNw9X", "aopEM5aUsf4ANKGq", "Y4tGVK4QOtDt8iXZ", "Pw4lbRaoKWlCHLmZ", "Nlcrt1j93UGJWODx", "rfnaeeZHGb0BWHmS", "1MF49FfQrNqxiO3j", "ipQDFLik98qwha1T",
+"IJMal3S32EKxKINo", "OK0KddKVtYio4o27", "O1IDpb9Iz74EKuwN", "bxe6x3jgs7BSCjrP", "BSBlyXhTkVrSZpRW", "Zmfsuho5x5268Est", "juJSYIU79oKkiT2R", "pZsoTe5BA5kKULVg", "6dAdrhdLtklNl0n7", "uYKvy4sJGASXdK5j",
 };
 
 #endif

@@ -15,44 +15,19 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "mbedtls/config.h"
+#include "mbedtls/aes.h"
+
 #include "config.h"
 #include "message_data.h"
 
 /* Container for some structures used by the MQTT publisher app. */
 struct mqtt_client_ctx {
-	/**
-	 * The connect message structure is only used during the connect
-	 * stage. Developers must set some msg properties before calling the
-	 * mqtt_tx_connect routine. See below.
-	 */
 	struct mqtt_connect_msg connect_msg;
-	/**
-	 * This is the message that will be received by the server
-	 * (MQTT broker).
-	 */
 	struct mqtt_publish_msg pub_msg;
-
-	/**
-	 * This is the MQTT application context variable.
-	 */
 	struct mqtt_ctx mqtt_ctx;
-
-	/**
-	 * This variable will be passed to the connect callback, declared inside
-	 * the mqtt context struct. If not used, it could be set to NULL.
-	 */
 	void *connect_data;
-
-	/**
-	 * This variable will be passed to the disconnect callback, declared
-	 * inside the mqtt context struct. If not used, it could be set to NULL.
-	 */
 	void *disconnect_data;
-
-	/**
-	 * This variable will be passed to the publish_tx callback, declared
-	 * inside the mqtt context struct. If not used, it could be set to NULL.
-	 */
 	void *publish_data;
 };
 
@@ -66,20 +41,28 @@ K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
 static bool message_changed=false;
-static bool attributes_changed=false;
 
-#define X_STEP 0.05
-#define Z_MAX 100
-#define PI 3.14159265358979323846
-#define NUM_MESSAGES 1000
+#define KEY_128 "Gv5BBQvjxDFNgjy"
+#define MESSAGE_128 "SawLFz4OB4Cx23d"
+#define NUM_MESSAGES 100
 #define TOPIC "topic"
 static char* curr_msg = "";
+static char* encrypted_msg[128];
+unsigned char key[16] = { 'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 0, 0, 0, 0, 0, 0, 0 };
 
 #define SS_STACK_SIZE 2048
 #define SS_PRIORITY 5
 
 K_THREAD_STACK_DEFINE(ss_stack_area, SS_STACK_SIZE);
 struct k_thread ss_thread;
+
+static void encrypt_aes() {
+	mbedtls_aes_context aes_ctx;
+	mbedtls_aes_init( &aes_ctx );
+	mbedtls_aes_setkey_enc( &aes_ctx, KEY_128, 128 );
+	mbedtls_aes_crypt_ecb( &aes_ctx, MBEDTLS_AES_ENCRYPT, MESSAGE_128, encrypted_msg );
+	mbedtls_aes_free( &aes_ctx );
+}
 
 void message_thread()
 {
@@ -88,12 +71,13 @@ void message_thread()
 	uint32_t cycles_spent;
 	uint32_t nanoseconds_spent = 0;
 
-	for (int arr_index = 0; arr_index < NUM_MESSAGES; arr_index++) {
+	//for (int arr_index = 0; arr_index < NUM_MESSAGES; arr_index++) {
 		k_sleep(APP_SLEEP_MSECS);
 		start_time = k_cycle_get_32();
 		k_mutex_lock(&pub_data, K_FOREVER);
 
-		curr_msg = messages_5[arr_index];
+		curr_msg = MESSAGE_128; //messages_16[0];
+		encrypt_aes();
 		message_changed = true;
 
 		k_mutex_unlock(&pub_data);
@@ -101,10 +85,10 @@ void message_thread()
 		stop_time = k_cycle_get_32();
 		cycles_spent = stop_time - start_time;
 		nanoseconds_spent = nanoseconds_spent + SYS_CLOCK_HW_CYCLES_TO_NS(cycles_spent);
-	}
+	//}
 
 	
-	printk("Time spent:%" PRIu32, nanoseconds_spent);
+	printk("Time spent:%" PRIu32 "\n", nanoseconds_spent);
 }
 
 
@@ -217,7 +201,7 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 static char *get_message_payload(enum mqtt_qos qos) 
 {
 	static char payload[128];
-	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", curr_msg);
+	snprintf(payload, sizeof(payload), "%s", encrypted_msg);
 	return payload;
 }
 
@@ -318,7 +302,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 		if (!pub_ctx.mqtt_ctx.connected) {
 			mqtt_close(&pub_ctx.mqtt_ctx);
 			goto exit_pub;
-		}
+		} 
 
 		do {
 			bool data_changed = false;
@@ -389,7 +373,7 @@ void main(void)
 
 	while (true) {
 		k_mutex_lock(&pub_data, K_FOREVER);
-		attributes_changed = true;
+		//attributes_changed = true;
 		k_mutex_unlock(&pub_data);
 		k_sem_give(&pub_sem);
 		k_sleep(10000);
