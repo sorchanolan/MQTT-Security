@@ -15,44 +15,43 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "mbedtls/platform.h"
+#include "mbedtls/config.h"
+#include "mbedtls/cipher.h"
+#include "mbedtls/md4.h"
+#include "mbedtls/md5.h"
+#include "mbedtls/ripemd160.h"
+#include "mbedtls/sha1.h"
+#include "mbedtls/sha256.h"
+#include "mbedtls/sha512.h"
+#include "mbedtls/arc4.h"
+#include "mbedtls/des.h"
+#include "mbedtls/aes.h"
+#include "mbedtls/cmac.h"
+#include "mbedtls/blowfish.h"
+#include "mbedtls/camellia.h"
+#include "mbedtls/gcm.h"
+#include "mbedtls/ccm.h"
+#include "mbedtls/havege.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/hmac_drbg.h"
+#include "mbedtls/rsa.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/dhm.h"
+#include "mbedtls/ecdsa.h"
+#include "mbedtls/ecdh.h"
+#include "mbedtls/error.h"
+#include "mbedtls/memory_buffer_alloc.h"
+
 #include "config.h"
-#include "message_data.h"
 
 /* Container for some structures used by the MQTT publisher app. */
 struct mqtt_client_ctx {
-	/**
-	 * The connect message structure is only used during the connect
-	 * stage. Developers must set some msg properties before calling the
-	 * mqtt_tx_connect routine. See below.
-	 */
 	struct mqtt_connect_msg connect_msg;
-	/**
-	 * This is the message that will be received by the server
-	 * (MQTT broker).
-	 */
 	struct mqtt_publish_msg pub_msg;
-
-	/**
-	 * This is the MQTT application context variable.
-	 */
 	struct mqtt_ctx mqtt_ctx;
-
-	/**
-	 * This variable will be passed to the connect callback, declared inside
-	 * the mqtt context struct. If not used, it could be set to NULL.
-	 */
 	void *connect_data;
-
-	/**
-	 * This variable will be passed to the disconnect callback, declared
-	 * inside the mqtt context struct. If not used, it could be set to NULL.
-	 */
 	void *disconnect_data;
-
-	/**
-	 * This variable will be passed to the publish_tx callback, declared
-	 * inside the mqtt context struct. If not used, it could be set to NULL.
-	 */
 	void *publish_data;
 };
 
@@ -66,45 +65,87 @@ K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
 static bool message_changed=false;
-static bool attributes_changed=false;
+static bool message_changed_not=false;
 
-#define X_STEP 0.05
-#define Z_MAX 100
-#define PI 3.14159265358979323846
+#define KEY_128 "Gv5BBQvjxDFNgjy"
+#define MESSAGE_128 "SawLFz4OB4Cx23d"
 #define NUM_MESSAGES 1000
 #define TOPIC "topic"
-static char* curr_msg = "";
+static unsigned char curr_msg[128];
+static char encrypted_msg[128];
+static int loop_count = 0;
+static int ret = 1;
+unsigned long i;
 
 #define SS_STACK_SIZE 2048
 #define SS_PRIORITY 5
 
+#define MEM_BLOCK_OVERHEAD  ( 2 * sizeof( size_t ) )
+#define HEAP_SIZE       (1u << 16)  // 64k
+#define BUFSIZE         1024
+
+#define MEMORY_MEASURE_INIT                                        \
+    size_t max_used, max_blocks, max_bytes;                        \
+    size_t prv_used, prv_blocks;                                   \
+    mbedtls_memory_buffer_alloc_cur_get( &prv_used, &prv_blocks ); \
+    mbedtls_memory_buffer_alloc_max_reset( );
+
+#define MEMORY_MEASURE_PRINT( title_len )                          \
+    mbedtls_memory_buffer_alloc_max_get( &max_used, &max_blocks ); \
+    for( i = 12 - title_len; i != 0; i-- ) printk( " " );  \
+    max_used -= prv_used;                                          \
+    max_blocks -= prv_blocks;                                      \
+    max_bytes = max_used + MEM_BLOCK_OVERHEAD * max_blocks;        \
+    printk( "%6u heap bytes", (unsigned) max_bytes );
+
 K_THREAD_STACK_DEFINE(ss_stack_area, SS_STACK_SIZE);
 struct k_thread ss_thread;
 
+static void encrypt_aes() {
+	mbedtls_aes_context aes_ctx;
+	mbedtls_aes_init( &aes_ctx );
+	mbedtls_aes_setkey_enc( &aes_ctx, KEY_128, 128 );
+	mbedtls_aes_crypt_ecb( &aes_ctx, MBEDTLS_AES_ENCRYPT, &curr_msg, encrypted_msg );
+	mbedtls_aes_free( &aes_ctx );
+}
+
 void message_thread()
 {
-	uint32_t start_time;
-	uint32_t stop_time;
-	uint32_t cycles_spent;
-	uint32_t nanoseconds_spent = 0;
-
-	for (int arr_index = 0; arr_index < NUM_MESSAGES; arr_index++) {
+	while(true) {
 		k_sleep(APP_SLEEP_MSECS);
-		start_time = k_cycle_get_32();
 		k_mutex_lock(&pub_data, K_FOREVER);
 
-		curr_msg = messages_5[arr_index];
-		message_changed = true;
+		uint32_t start_time;
+		uint32_t stop_time;
+		uint32_t cycles_spent;
+		uint32_t nanoseconds_spent = 0;
 
+		//MEMORY_MEASURE_INIT
+		//MEMORY_MEASURE_PRINT(2)
+
+		for (int arr_index = 0; arr_index < NUM_MESSAGES; arr_index++) {
+			k_sleep(APP_SLEEP_MSECS);
+			start_time = k_cycle_get_32();
+			k_mutex_lock(&pub_data, K_FOREVER);
+
+			memset( curr_msg, 0xBB, sizeof( curr_msg ) );
+			encrypt_aes();
+		 	message_changed = true;
+
+			k_mutex_unlock(&pub_data);
+			k_sem_give(&pub_sem);
+			stop_time = k_cycle_get_32();
+			cycles_spent = stop_time - start_time;
+			nanoseconds_spent = nanoseconds_spent + SYS_CLOCK_HW_CYCLES_TO_NS(cycles_spent);
+		}
+	
+		printk("Time spent:%" PRIu32 "\n", nanoseconds_spent);
 		k_mutex_unlock(&pub_data);
-		k_sem_give(&pub_sem);
-		stop_time = k_cycle_get_32();
-		cycles_spent = stop_time - start_time;
-		nanoseconds_spent = nanoseconds_spent + SYS_CLOCK_HW_CYCLES_TO_NS(cycles_spent);
+		k_sem_give(&pub_sem);	
 	}
 
-	
-	printk("Time spent:%" PRIu32, nanoseconds_spent);
+	exit:
+		printk("Experiments complete.\n");
 }
 
 
@@ -217,7 +258,8 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 static char *get_message_payload(enum mqtt_qos qos) 
 {
 	static char payload[128];
-	snprintf(payload, sizeof(payload), "{\"message\":\"%s\"}", curr_msg);
+	snprintf(payload, sizeof(payload), "loop %d: %s\n", loop_count, encrypted_msg);
+	loop_count++;
 	return payload;
 }
 
@@ -318,7 +360,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 		if (!pub_ctx.mqtt_ctx.connected) {
 			mqtt_close(&pub_ctx.mqtt_ctx);
 			goto exit_pub;
-		}
+		} 
 
 		do {
 			bool data_changed = false;
@@ -389,7 +431,7 @@ void main(void)
 
 	while (true) {
 		k_mutex_lock(&pub_data, K_FOREVER);
-		attributes_changed = true;
+		message_changed_not = true;
 		k_mutex_unlock(&pub_data);
 		k_sem_give(&pub_sem);
 		k_sleep(10000);
