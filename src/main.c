@@ -15,8 +15,16 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "mbedtls/platform.h"
+#include "config.h"
+
+#if !defined(MBEDTLS_CONFIG_FILE)
 #include "mbedtls/config.h"
+#else
+#include MBEDTLS_CONFIG_FILE
+#endif
+
+#include "mbedtls/platform.h"
+//#include "mbedtls/config.h"
 #include "mbedtls/cipher.h"
 #include "mbedtls/md4.h"
 #include "mbedtls/md5.h"
@@ -43,8 +51,6 @@
 #include "mbedtls/error.h"
 #include "mbedtls/memory_buffer_alloc.h"
 
-#include "config.h"
-
 /* Container for some structures used by the MQTT publisher app. */
 struct mqtt_client_ctx {
 	struct mqtt_connect_msg connect_msg;
@@ -64,84 +70,162 @@ static struct net_mgmt_event_callback cb;
 K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
-static bool message_changed=false;
-static bool message_changed_not=false;
-
-#define KEY_128 "Gv5BBQvjxDFNgjy"
 #define MESSAGE_128 "SawLFz4OB4Cx23d"
-#define NUM_MESSAGES 1000
+#define NUM_MESSAGES 100
 #define TOPIC "topic"
-static unsigned char curr_msg[128];
-static char encrypted_msg[128];
-static int loop_count = 0;
+
+static bool message_changed=false;
+
+const char* keys[] = {"Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GG"};
+static unsigned char* curr_msg[256];
+static char encrypted_msg[256];
+static int loop_count = 1;
 static int ret = 1;
+static int num = 0x1;
+static unsigned char tmp[200];
 unsigned long i;
+
+static void prepare_msg(struct mqtt_publish_msg *pub_msg,
+				     enum mqtt_qos qos);
+static struct mqtt_client_ctx pub_ctx;
+                                     
+static size_t max_used, max_blocks, max_bytes;                        
+static size_t prv_used, prv_blocks;  
 
 #define SS_STACK_SIZE 2048
 #define SS_PRIORITY 5
 
 #define MEM_BLOCK_OVERHEAD  ( 2 * sizeof( size_t ) )
 #define HEAP_SIZE       (1u << 16)  // 64k
-#define BUFSIZE         1024
+#define BUFSIZE         256
 
-#define MEMORY_MEASURE_INIT                                        \
-    size_t max_used, max_blocks, max_bytes;                        \
-    size_t prv_used, prv_blocks;                                   \
-    mbedtls_memory_buffer_alloc_cur_get( &prv_used, &prv_blocks ); \
+static void memory_measure_init() {                                 
+    mbedtls_memory_buffer_alloc_cur_get( &prv_used, &prv_blocks ); 
     mbedtls_memory_buffer_alloc_max_reset( );
+}
 
-#define MEMORY_MEASURE_PRINT( title_len )                          \
-    mbedtls_memory_buffer_alloc_max_get( &max_used, &max_blocks ); \
-    for( i = 12 - title_len; i != 0; i-- ) printk( " " );  \
-    max_used -= prv_used;                                          \
-    max_blocks -= prv_blocks;                                      \
-    max_bytes = max_used + MEM_BLOCK_OVERHEAD * max_blocks;        \
+static void memory_measure_print( size_t title_len ) {                         
+    mbedtls_memory_buffer_alloc_max_get( &max_used, &max_blocks ); 
+
+    for( i = 12 - title_len; i != 0; i-- ) printk( " " );  
+    max_used -= prv_used;                                          
+    max_blocks -= prv_blocks;                                      
+    max_bytes = max_used + MEM_BLOCK_OVERHEAD * max_blocks;        
     printk( "%6u heap bytes", (unsigned) max_bytes );
+}
 
 K_THREAD_STACK_DEFINE(ss_stack_area, SS_STACK_SIZE);
 struct k_thread ss_thread;
 
-static void encrypt_aes() {
+static void run_experiment(char *title, int index, int keysize, void (*encrypt)(int,int)) {
+	uint32_t start_time;
+	uint32_t stop_time;
+	uint32_t cycles_spent;
+	uint32_t nanoseconds_spent = 0;
+	//memory_measure_init();
+
+	for (int arr_index = 0; arr_index < NUM_MESSAGES; arr_index++) {
+		k_sleep(APP_SLEEP_MSECS);
+		k_mutex_lock(&pub_data, K_FOREVER);
+		memset( curr_msg, ++num, sizeof( curr_msg ) );
+
+		start_time = k_cycle_get_32();
+		
+		encrypt(index, keysize);
+	 	//message_changed = true;
+	 	prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
+	 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
+		//PRINT_RESULT("mqtt_tx_publish", rc);	
+
+		k_mutex_unlock(&pub_data);
+		k_sem_give(&pub_sem);
+
+		stop_time = k_cycle_get_32();
+		cycles_spent = stop_time - start_time;
+		nanoseconds_spent = nanoseconds_spent + SYS_CLOCK_HW_CYCLES_TO_NS(cycles_spent);
+		//printk("%" PRIu32 "\r\n", nanoseconds_spent);	
+		//memory_measure_print(2);
+	}
+	
+	printk("%s: Time spent:%" PRIu32 "\r\n", title, nanoseconds_spent);		
+}
+
+static void encrypt_aes_ecb(int index, int keysize) {
 	mbedtls_aes_context aes_ctx;
 	mbedtls_aes_init( &aes_ctx );
-	mbedtls_aes_setkey_enc( &aes_ctx, KEY_128, 128 );
-	mbedtls_aes_crypt_ecb( &aes_ctx, MBEDTLS_AES_ENCRYPT, &curr_msg, encrypted_msg );
-	mbedtls_aes_free( &aes_ctx );
+	mbedtls_aes_setkey_enc( &aes_ctx, keys[index], keysize );
+	mbedtls_aes_crypt_ecb( &aes_ctx, MBEDTLS_AES_ENCRYPT, curr_msg, encrypted_msg );
+	mbedtls_aes_free( &aes_ctx );	
+}
+
+static void encrypt_aes_cbc(int index, int keysize) {
+	mbedtls_aes_context aes_ctx;
+	mbedtls_aes_init( &aes_ctx );
+	mbedtls_aes_setkey_enc( &aes_ctx, keys[index], keysize );
+	mbedtls_aes_crypt_cbc( &aes_ctx, MBEDTLS_AES_ENCRYPT, BUFSIZE, tmp, curr_msg, encrypted_msg );
+	mbedtls_aes_free( &aes_ctx );	
+}
+
+static void encrypt_aes_ccm(int index, int keysize) {
+	mbedtls_ccm_context ccm;
+    mbedtls_ccm_init( &ccm );
+	mbedtls_ccm_setkey( &ccm, MBEDTLS_CIPHER_ID_AES, keys[index], keysize );
+	mbedtls_ccm_encrypt_and_tag( &ccm, BUFSIZE, tmp, 4, NULL, 0, curr_msg, encrypted_msg, tmp, 8 );
+	printk("%s\n", encrypted_msg);
+	mbedtls_ccm_free( &ccm );
 }
 
 void message_thread()
 {
+	memset( curr_msg, num, sizeof( curr_msg ) );
+	memset( tmp, num, sizeof( tmp ) );
+
+	const int *list;
+	const mbedtls_cipher_info_t *cipher_info;
+	list = mbedtls_cipher_list();
+    while( *list )
+    {
+        cipher_info = mbedtls_cipher_info_from_type( *list );
+        printk( "%s\n", cipher_info->name );
+        list++;
+    }
+	
 	while(true) {
 		k_sleep(APP_SLEEP_MSECS);
-		k_mutex_lock(&pub_data, K_FOREVER);
 
-		uint32_t start_time;
-		uint32_t stop_time;
-		uint32_t cycles_spent;
-		uint32_t nanoseconds_spent = 0;
-
-		//MEMORY_MEASURE_INIT
-		//MEMORY_MEASURE_PRINT(2)
-
-		for (int arr_index = 0; arr_index < NUM_MESSAGES; arr_index++) {
-			k_sleep(APP_SLEEP_MSECS);
-			start_time = k_cycle_get_32();
-			k_mutex_lock(&pub_data, K_FOREVER);
-
-			memset( curr_msg, 0xBB, sizeof( curr_msg ) );
-			encrypt_aes();
-		 	message_changed = true;
-
-			k_mutex_unlock(&pub_data);
-			k_sem_give(&pub_sem);
-			stop_time = k_cycle_get_32();
-			cycles_spent = stop_time - start_time;
-			nanoseconds_spent = nanoseconds_spent + SYS_CLOCK_HW_CYCLES_TO_NS(cycles_spent);
+		for (int keysize = 128; keysize <= 256; keysize += 64) {
+			int index = (keysize - 128) / 64;
+			char buf[12];
+			snprintf(buf, sizeof buf, "AES_CBC_%d", keysize);
+			run_experiment(buf, index, keysize, encrypt_aes_cbc);
 		}
-	
-		printk("Time spent:%" PRIu32 "\n", nanoseconds_spent);
-		k_mutex_unlock(&pub_data);
-		k_sem_give(&pub_sem);	
+
+		for (int keysize = 128; keysize <= 256; keysize += 64) {
+			int index = (keysize - 128) / 64;
+			char buf[12];
+			snprintf(buf, sizeof buf, "AES_ECB_%d", keysize);
+			run_experiment(buf, index, keysize, encrypt_aes_ecb);
+		}
+
+		for (int keysize = 128; keysize <= 256; keysize += 64) {
+			int index = (keysize - 128) / 64;
+			char buf[12];
+			snprintf(buf, sizeof buf, "AES_CCM_%d", keysize);
+			run_experiment(buf, index, keysize, encrypt_aes_ccm);
+		}
+		
+
+		// mbedtls_arc4_context arc4;
+  //       mbedtls_arc4_init( &arc4 );
+  //       mbedtls_arc4_setup( &arc4, tmp, 32 );
+  //       run_experiment( "ARC4", mbedtls_arc4_crypt( &arc4, BUFSIZE, &curr_msg, encrypted_msg ) );
+  //       mbedtls_arc4_free( &arc4 );
+
+  //       mbedtls_des3_context des3;
+  //       mbedtls_des3_init( &des3 );
+  //       mbedtls_des3_set3key_enc( &des3, KEY_128 );
+  //       run_experiment( "3DES", mbedtls_des3_crypt_cbc( &des3, MBEDTLS_DES_ENCRYPT, BUFSIZE, tmp, &curr_msg, encrypted_msg ) );
+  //       mbedtls_des3_free( &des3 );
 	}
 
 	exit:
@@ -257,8 +341,8 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 
 static char *get_message_payload(enum mqtt_qos qos) 
 {
-	static char payload[128];
-	snprintf(payload, sizeof(payload), "loop %d: %s\n", loop_count, encrypted_msg);
+	static char payload[270];
+	snprintf(payload, sizeof(payload), "%d:%s\n", loop_count, encrypted_msg);
 	loop_count++;
 	return payload;
 }
@@ -290,7 +374,6 @@ static void prepare_msg(struct mqtt_publish_msg *pub_msg,
 
 K_THREAD_STACK_DEFINE(pub_stack_area, PUB_STACK_SIZE);
 struct k_thread pub_thread;
-static struct mqtt_client_ctx pub_ctx;
 
 void publisher_thread(void * unused1, void * unused2, void * unused3)
 {
@@ -429,13 +512,13 @@ void main(void)
 	event_iface_up(NULL, NET_EVENT_IF_UP, iface);
 #endif
 
-	while (true) {
-		k_mutex_lock(&pub_data, K_FOREVER);
-		message_changed_not = true;
-		k_mutex_unlock(&pub_data);
-		k_sem_give(&pub_sem);
-		k_sleep(10000);
-	}
+	// while (true) {
+	// 	k_mutex_lock(&pub_data, K_FOREVER);
+	// 	message_changed_not = true;
+	// 	k_mutex_unlock(&pub_data);
+	// 	k_sem_give(&pub_sem);
+	// 	k_sleep(10000);
+	// }
 
 	return;
 }

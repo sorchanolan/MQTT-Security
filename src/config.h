@@ -42,4 +42,7 @@
 
 #define TB_ACCESS_TOKEN "rpMoBk6VAl0PgSFbtBcx"
 
+#define MBEDTLS_PLATFORM_MEMORY
+#define MBEDTLS_MEMORY_DEBUG
+
 #endif

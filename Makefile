@@ -1,5 +1,5 @@
 BOARD ?= nrf52_pca10040
-CONF_FILE ?= prj_cs7ns2.conf
+CONF_FILE ?= prj_mqtt_sec.conf
 
 include $(ZEPHYR_BASE)/Makefile.inc
 
