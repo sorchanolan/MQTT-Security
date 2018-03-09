@@ -71,14 +71,14 @@ K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
 #define MESSAGE_128 "SawLFz4OB4Cx23d"
-#define NUM_MESSAGES 100
+#define NUM_MESSAGES 10
 #define TOPIC "topic"
 
 static bool message_changed=false;
 
 const char* keys[] = {"Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GG"};
 static unsigned char* curr_msg[256];
-static char encrypted_msg[256];
+static char encrypted_msg[400];
 static int loop_count = 1;
 static int ret = 1;
 static int num = 0x1;
@@ -104,14 +104,13 @@ static void memory_measure_init() {
     mbedtls_memory_buffer_alloc_max_reset( );
 }
 
-static void memory_measure_print( size_t title_len ) {                         
+static void memory_measure_print() {                         
     mbedtls_memory_buffer_alloc_max_get( &max_used, &max_blocks ); 
-
-    for( i = 12 - title_len; i != 0; i-- ) printk( " " );  
+ 
     max_used -= prv_used;                                          
     max_blocks -= prv_blocks;                                      
     max_bytes = max_used + MEM_BLOCK_OVERHEAD * max_blocks;        
-    printk( "%6u heap bytes", (unsigned) max_bytes );
+    printk( "%6u heap bytes %6u %6u %6u %6u \r\n", (unsigned) max_bytes, (unsigned) max_used, (unsigned) max_blocks, (unsigned) prv_used, (unsigned) prv_blocks );
 }
 
 K_THREAD_STACK_DEFINE(ss_stack_area, SS_STACK_SIZE);
@@ -122,7 +121,7 @@ static void run_experiment(char *title, int index, int keysize, void (*encrypt)(
 	uint32_t stop_time;
 	uint32_t cycles_spent;
 	uint32_t nanoseconds_spent = 0;
-	//memory_measure_init();
+	int avg_overhead = 0;
 
 	for (int arr_index = 0; arr_index < NUM_MESSAGES; arr_index++) {
 		k_sleep(APP_SLEEP_MSECS);
@@ -132,10 +131,11 @@ static void run_experiment(char *title, int index, int keysize, void (*encrypt)(
 		start_time = k_cycle_get_32();
 		
 		encrypt(index, keysize);
-	 	//message_changed = true;
+		size_t msg_size = strlen(encrypted_msg);
+		avg_overhead += msg_size;
+		printk("%d\n", msg_size);
 	 	prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
 	 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
-		//PRINT_RESULT("mqtt_tx_publish", rc);	
 
 		k_mutex_unlock(&pub_data);
 		k_sem_give(&pub_sem);
@@ -143,13 +143,14 @@ static void run_experiment(char *title, int index, int keysize, void (*encrypt)(
 		stop_time = k_cycle_get_32();
 		cycles_spent = stop_time - start_time;
 		nanoseconds_spent = nanoseconds_spent + SYS_CLOCK_HW_CYCLES_TO_NS(cycles_spent);
-		//printk("%" PRIu32 "\r\n", nanoseconds_spent);	
-		//memory_measure_print(2);
 	}
-	
-	printk("%s: Time spent:%" PRIu32 "\r\n", title, nanoseconds_spent);		
+	avg_overhead = avg_overhead / NUM_MESSAGES;
+	printk("%s: Time spent:%" PRIu32 "\nAverage overhead: %d\n", title, nanoseconds_spent, avg_overhead);		
 }
 
+/*****************************************************************/
+							/*AES*/
+/*****************************************************************/
 static void encrypt_aes_ecb(int index, int keysize) {
 	mbedtls_aes_context aes_ctx;
 	mbedtls_aes_init( &aes_ctx );
@@ -171,9 +172,139 @@ static void encrypt_aes_ccm(int index, int keysize) {
     mbedtls_ccm_init( &ccm );
 	mbedtls_ccm_setkey( &ccm, MBEDTLS_CIPHER_ID_AES, keys[index], keysize );
 	mbedtls_ccm_encrypt_and_tag( &ccm, BUFSIZE, tmp, 4, NULL, 0, curr_msg, encrypted_msg, tmp, 8 );
-	printk("%s\n", encrypted_msg);
 	mbedtls_ccm_free( &ccm );
 }
+
+static void encrypt_aes_ctr(int index, int keysize) {
+    size_t nc_offset = 0;
+    unsigned char stream_block[16];
+	mbedtls_aes_context ctr;
+    mbedtls_aes_init( &ctr );
+	mbedtls_aes_setkey_enc( &ctr, keys[index], keysize );
+	mbedtls_aes_crypt_ctr( &ctr, BUFSIZE, &nc_offset, tmp, stream_block, curr_msg, encrypted_msg );
+	mbedtls_aes_free( &ctr );
+}
+
+static void encrypt_aes_gcm(int index, int keysize) {
+	mbedtls_gcm_context gcm;
+	mbedtls_gcm_init( &gcm );
+	mbedtls_gcm_setkey( &gcm, MBEDTLS_CIPHER_ID_AES, keys[index], keysize );
+	mbedtls_gcm_crypt_and_tag( &gcm, MBEDTLS_GCM_ENCRYPT, BUFSIZE, tmp, 4, NULL, 0, curr_msg, encrypted_msg, 8, tmp );
+	mbedtls_gcm_free( &gcm );
+}
+
+static void encrypt_aes_cfb128(int index, int keysize) {
+	mbedtls_aes_context aes_ctx;
+	mbedtls_aes_init( &aes_ctx );
+	mbedtls_aes_setkey_enc( &aes_ctx, keys[index], keysize );
+	mbedtls_aes_crypt_cfb128( &aes_ctx, MBEDTLS_AES_ENCRYPT, BUFSIZE, 32, tmp, curr_msg, encrypted_msg );
+	mbedtls_aes_free( &aes_ctx );
+}
+
+/*****************************************************************/
+						  /*CAMELLIA*/
+/*****************************************************************/
+
+static void encrypt_camellia_ecb(int index, int keysize) {
+	mbedtls_camellia_context camellia;
+    mbedtls_camellia_init( &camellia );
+    mbedtls_camellia_setkey_enc( &camellia, keys[index], keysize );
+    mbedtls_camellia_crypt_ecb( &camellia, MBEDTLS_CAMELLIA_ENCRYPT, curr_msg, encrypted_msg );
+    mbedtls_camellia_free( &camellia );
+}
+
+static void encrypt_camellia_cbc(int index, int keysize) {
+	mbedtls_camellia_context camellia;
+    mbedtls_camellia_init( &camellia );
+    mbedtls_camellia_setkey_enc( &camellia, keys[index], keysize );
+    mbedtls_camellia_crypt_cbc( &camellia, MBEDTLS_CAMELLIA_ENCRYPT, BUFSIZE, tmp, curr_msg, encrypted_msg );
+    mbedtls_camellia_free( &camellia );
+}
+
+static void encrypt_camellia_cfb128(int index, int keysize) {
+	mbedtls_camellia_context camellia;
+    mbedtls_camellia_init( &camellia );
+    mbedtls_camellia_setkey_enc( &camellia, keys[index], keysize );
+    mbedtls_camellia_crypt_cfb128( &camellia, MBEDTLS_CAMELLIA_ENCRYPT, BUFSIZE, 32, tmp, curr_msg, encrypted_msg );
+    mbedtls_camellia_free( &camellia );
+}
+
+static void encrypt_camellia_ctr(int index, int keysize) {
+    size_t nc_offset = 0;
+    unsigned char stream_block[16];
+	mbedtls_camellia_context ctr;
+    mbedtls_camellia_init( &ctr );
+	mbedtls_camellia_setkey_enc( &ctr, keys[index], keysize );
+	mbedtls_camellia_crypt_ctr( &ctr, BUFSIZE, &nc_offset, tmp, stream_block, curr_msg, encrypted_msg );
+	mbedtls_camellia_free( &ctr );
+}
+
+static void encrypt_camellia_gcm(int index, int keysize) {
+	mbedtls_gcm_context gcm;
+	mbedtls_gcm_init( &gcm );
+	mbedtls_gcm_setkey( &gcm, MBEDTLS_CIPHER_ID_CAMELLIA, keys[index], keysize );
+	mbedtls_gcm_crypt_and_tag( &gcm, MBEDTLS_GCM_ENCRYPT, BUFSIZE, tmp, 4, NULL, 0, curr_msg, encrypted_msg, 8, tmp );
+	mbedtls_gcm_free( &gcm );
+}
+
+static void encrypt_camellia_ccm(int index, int keysize) {
+	mbedtls_ccm_context ccm;
+    mbedtls_ccm_init( &ccm );
+	mbedtls_ccm_setkey( &ccm, MBEDTLS_CIPHER_ID_CAMELLIA, keys[index], keysize );
+	mbedtls_ccm_encrypt_and_tag( &ccm, BUFSIZE, tmp, 4, NULL, 0, curr_msg, encrypted_msg, tmp, 8 );
+	mbedtls_ccm_free( &ccm );
+}
+
+/*****************************************************************/
+						  /*BLOWFISH*/
+/*****************************************************************/
+
+static void encrypt_blowfish_cbc(int index, int keysize) {
+	mbedtls_blowfish_context blowfish;
+    mbedtls_blowfish_init( &blowfish );
+    mbedtls_blowfish_setkey( &blowfish, tmp, keysize );
+    mbedtls_blowfish_crypt_cbc( &blowfish, MBEDTLS_BLOWFISH_ENCRYPT, BUFSIZE, tmp, curr_msg, encrypted_msg );
+    mbedtls_blowfish_free( &blowfish );
+}
+
+static void encrypt_blowfish_ecb(int index, int keysize) {
+	mbedtls_blowfish_context blowfish;
+    mbedtls_blowfish_init( &blowfish );
+    mbedtls_blowfish_setkey( &blowfish, keys[index], keysize );
+    mbedtls_blowfish_crypt_ecb( &blowfish, MBEDTLS_BLOWFISH_ENCRYPT, curr_msg, encrypted_msg );
+    mbedtls_blowfish_free( &blowfish );
+}
+
+static void encrypt_blowfish_ctr(int index, int keysize) {
+    size_t nc_offset = 0;
+    unsigned char stream_block[16];
+	mbedtls_blowfish_context ctr;
+    mbedtls_blowfish_init( &ctr );
+	mbedtls_blowfish_setkey( &ctr, keys[index], keysize );
+	mbedtls_blowfish_crypt_ctr( &ctr, BUFSIZE, &nc_offset, tmp, stream_block, curr_msg, encrypted_msg );
+	mbedtls_blowfish_free( &ctr );
+}
+
+static void encrypt_blowfish_cfb64(int index, int keysize) {
+	mbedtls_blowfish_context blowfish_ctx;
+	mbedtls_blowfish_init( &blowfish_ctx );
+	mbedtls_blowfish_setkey( &blowfish_ctx, keys[index], keysize );
+	mbedtls_blowfish_crypt_cfb64( &blowfish_ctx, MBEDTLS_BLOWFISH_ENCRYPT, BUFSIZE, 32, tmp, curr_msg, encrypted_msg );
+	mbedtls_blowfish_free( &blowfish_ctx );
+}
+
+/*****************************************************************/
+						  /*ARCFOUR*/
+/*****************************************************************/
+
+static void encrypt_arc4_128(int index, int keysize) {
+	mbedtls_arc4_context arc4;
+    mbedtls_arc4_init( &arc4 );
+    mbedtls_arc4_setup( &arc4, keys[0], keysize );
+    mbedtls_arc4_crypt( &arc4, BUFSIZE, &curr_msg, encrypted_msg );
+    mbedtls_arc4_free( &arc4 );
+}
+
 
 void message_thread()
 {
@@ -189,43 +320,63 @@ void message_thread()
         printk( "%s\n", cipher_info->name );
         list++;
     }
-	
-	while(true) {
-		k_sleep(APP_SLEEP_MSECS);
 
-		for (int keysize = 128; keysize <= 256; keysize += 64) {
-			int index = (keysize - 128) / 64;
-			char buf[12];
-			snprintf(buf, sizeof buf, "AES_CBC_%d", keysize);
-			run_experiment(buf, index, keysize, encrypt_aes_cbc);
-		}
+	k_sleep(APP_SLEEP_MSECS);
+	int index;
+	char buf[30];	
 
-		for (int keysize = 128; keysize <= 256; keysize += 64) {
-			int index = (keysize - 128) / 64;
-			char buf[12];
-			snprintf(buf, sizeof buf, "AES_ECB_%d", keysize);
-			run_experiment(buf, index, keysize, encrypt_aes_ecb);
-		}
+	run_experiment("ARC4_128", tmp, 128, encrypt_arc4_128);
 
-		for (int keysize = 128; keysize <= 256; keysize += 64) {
-			int index = (keysize - 128) / 64;
-			char buf[12];
-			snprintf(buf, sizeof buf, "AES_CCM_%d", keysize);
-			run_experiment(buf, index, keysize, encrypt_aes_ccm);
-		}
+	for (int keysize = 128; keysize <= 256; keysize += 64) {
+		index = (keysize - 128) / 64;
+
+		snprintf(buf, sizeof buf, "CAMELLIA_ECB_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_camellia_ecb);
 		
-
-		// mbedtls_arc4_context arc4;
-  //       mbedtls_arc4_init( &arc4 );
-  //       mbedtls_arc4_setup( &arc4, tmp, 32 );
-  //       run_experiment( "ARC4", mbedtls_arc4_crypt( &arc4, BUFSIZE, &curr_msg, encrypted_msg ) );
-  //       mbedtls_arc4_free( &arc4 );
-
-  //       mbedtls_des3_context des3;
-  //       mbedtls_des3_init( &des3 );
-  //       mbedtls_des3_set3key_enc( &des3, KEY_128 );
-  //       run_experiment( "3DES", mbedtls_des3_crypt_cbc( &des3, MBEDTLS_DES_ENCRYPT, BUFSIZE, tmp, &curr_msg, encrypted_msg ) );
-  //       mbedtls_des3_free( &des3 );
+		snprintf(buf, sizeof buf, "CAMELLIA_CBC_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_camellia_cbc);
+	
+		snprintf(buf, sizeof buf, "CAMELLIA_CTR_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_camellia_ctr);
+	
+		snprintf(buf, sizeof buf, "CAMELLIA_CCM_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_camellia_ccm);
+	
+		snprintf(buf, sizeof buf, "CAMELLIA_GCM_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_camellia_gcm);
+	
+	// 	snprintf(buf, sizeof buf, "CAMELLIA_CFB128_%d", keysize);
+	// 	run_experiment(buf, index, keysize, encrypt_camellia_cfb128);
+	
+		snprintf(buf, sizeof buf, "AES_CBC_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_aes_cbc);
+	
+		snprintf(buf, sizeof buf, "AES_ECB_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_aes_ecb);
+	
+		snprintf(buf, sizeof buf, "AES_CCM_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_aes_ccm);
+	
+		snprintf(buf, sizeof buf, "AES_CTR_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_aes_ctr);
+	
+		snprintf(buf, sizeof buf, "AES_GCM_%d", keysize);
+		run_experiment(buf, index, keysize, encrypt_aes_gcm);
+	
+	// 	snprintf(buf, sizeof buf, "AES_CFB128_%d", keysize);
+	// 	run_experiment(buf, index, keysize, encrypt_aes_cfb128);
+	
+	// 	snprintf(buf, sizeof buf, "BLOWFISH_CTR_%d", keysize);
+	// 	run_experiment(buf, index, keysize, encrypt_blowfish_ctr);
+	
+	// 	snprintf(buf, sizeof buf, "BLOWFISH_ECB_%d", keysize);
+	// 	run_experiment(buf, index, keysize, encrypt_blowfish_ecb);
+	
+	// 	snprintf(buf, sizeof buf, "BLOWFISH_CBC_%d", keysize);
+	// 	run_experiment(buf, index, keysize, encrypt_blowfish_cbc);
+	
+	// 	snprintf(buf, sizeof buf, "BLOWFISH_CFB64_%d", keysize);
+	// 	run_experiment(buf, index, keysize, encrypt_blowfish_cfb64);
 	}
 
 	exit:
@@ -341,8 +492,8 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 
 static char *get_message_payload(enum mqtt_qos qos) 
 {
-	static char payload[270];
-	snprintf(payload, sizeof(payload), "%d:%s\n", loop_count, encrypted_msg);
+	static char payload[450];
+	snprintf(payload, sizeof(payload), "%s\n", encrypted_msg);
 	loop_count++;
 	return payload;
 }
@@ -511,14 +662,6 @@ void main(void)
 #else
 	event_iface_up(NULL, NET_EVENT_IF_UP, iface);
 #endif
-
-	// while (true) {
-	// 	k_mutex_lock(&pub_data, K_FOREVER);
-	// 	message_changed_not = true;
-	// 	k_mutex_unlock(&pub_data);
-	// 	k_sem_give(&pub_sem);
-	// 	k_sleep(10000);
-	// }
 
 	return;
 }
