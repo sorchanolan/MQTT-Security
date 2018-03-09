@@ -1,11 +1,13 @@
 import paho.mqtt.client as mqtt
+from Crypto.Cipher import AES
 
 # Define Variables
-MQTT_HOST = "10.0.2.15"
+MQTT_HOST = "127.0.0.1"
 MQTT_PORT = 2883
 MQTT_KEEPALIVE_INTERVAL = 5
-MQTT_TOPIC = "v1/devices/me/telemetry"
+MQTT_TOPIC = "topic"
 MQTT_MSG = "Hello MQTT"
+keys = ["Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GG"]
 
 
 # Define on_connect event Handler

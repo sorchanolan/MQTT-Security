@@ -1,0 +1,150 @@
+# 1 "dts/arm/nrf52_pca10040.dts_pre_compiled"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 1 "/Users/sorchanolan/MQTT_Security/System/outdir/nrf52_pca10040/include/generated/autoconf.h" 1
+# 1 "<command-line>" 2
+# 1 "dts/arm/nrf52_pca10040.dts_pre_compiled"
+# 1 "/Users/sorchanolan/Developer/zephyr/dts/arm/nrf52_pca10040.dts" 1
+
+
+
+
+
+
+/dts-v1/;
+# 1 "/Users/sorchanolan/Developer/zephyr/dts/arm/nordic/nrf52832.dtsi" 1
+# 1 "/Users/sorchanolan/Developer/zephyr/dts/arm/armv7-m.dtsi" 1
+# 1 "/Users/sorchanolan/Developer/zephyr/dts/common/skeleton.dtsi" 1
+
+
+
+
+
+
+/ {
+ #address-cells = <1>;
+ #size-cells = <1>;
+ chosen { };
+ aliases { };
+};
+# 2 "/Users/sorchanolan/Developer/zephyr/dts/arm/armv7-m.dtsi" 2
+
+/ {
+ soc {
+  #address-cells = <1>;
+  #size-cells = <1>;
+  compatible = "simple-bus";
+  interrupt-parent = <&nvic>;
+  ranges;
+
+  nvic: interrupt-controller@e000e100 {
+   compatible = "arm,v7m-nvic";
+   reg = <0xe000e100 0xc00>;
+   interrupt-controller;
+   #interrupt-cells = <2>;
+  };
+
+  systick: timer@e000e010 {
+   compatible = "arm,armv7m-systick";
+   reg = <0xe000e010 0x10>;
+   status = "disabled";
+  };
+ };
+};
+# 2 "/Users/sorchanolan/Developer/zephyr/dts/arm/nordic/nrf52832.dtsi" 2
+# 1 "/Users/sorchanolan/Developer/zephyr/dts/arm/nordic/mem.h" 1
+# 3 "/Users/sorchanolan/Developer/zephyr/dts/arm/nordic/nrf52832.dtsi" 2
+
+/ {
+ cpus {
+  #address-cells = <1>;
+  #size-cells = <0>;
+
+  cpu@0 {
+   device_type = "cpu";
+   compatible = "arm,cortex-m4f";
+   reg = <0>;
+  };
+ };
+
+ flash-controller@4001E000 {
+   compatible = "nrf,nrf52-flash-controller";
+   reg = <0x4001E000 0x550>;
+
+   #address-cells = <1>;
+   #size-cells = <1>;
+
+   flash0: flash@0 {
+    compatible = "soc-nv-flash";
+    reg = <0x00000000 (512 * 1024)>;
+    write-block-size = <4>;
+   };
+ };
+
+ sram0: memory@20000000 {
+  device_type = "memory";
+  compatible = "mmio-sram";
+  reg = <0x20000000 (64 * 1024)>;
+ };
+
+ soc {
+  uart0: uart@40002000 {
+   compatible = "nordic,nrf-uarte", "nordic,nrf-uart";
+   reg = <0x40002000 0x1000>;
+   interrupts = <2 1>;
+   status = "disabled";
+   label = "UART_0";
+  };
+ };
+};
+
+&nvic {
+ arm,num-irq-priority-bits = <3>;
+};
+# 9 "/Users/sorchanolan/Developer/zephyr/dts/arm/nrf52_pca10040.dts" 2
+
+/ {
+ model = "Nordic PCA10040 Dev Kit";
+ compatible = "nordic,pca10040-dk", "nordic,nrf52832-qfaa",
+       "nordic,nrf52832";
+
+ chosen {
+  zephyr,console = &uart0;
+  zephyr,sram = &sram0;
+  zephyr,flash = &flash0;
+ };
+};
+
+&uart0 {
+ status = "ok";
+ compatible = "nordic,nrf-uart";
+ current-speed = <115200>;
+};
+
+&flash0 {
+# 38 "/Users/sorchanolan/Developer/zephyr/dts/arm/nrf52_pca10040.dts"
+ partitions {
+  compatible = "fixed-partitions";
+  #address-cells = <1>;
+  #size-cells = <1>;
+
+  boot_partition: partition@0 {
+   label = "mcuboot";
+   reg = <0x00000000 0x8000>;
+  };
+  slot0_partition: partition@8000 {
+   label = "image-0";
+   reg = <0x00008000 0x34000>;
+  };
+  slot1_partition: partition@3c000 {
+   label = "image-1";
+   reg = <0x0003c000 0x34000>;
+  };
+  scratch_partition: partition@70000 {
+   label = "image-scratch";
+   reg = <0x00070000 0xD000>;
+  };
+# 73 "/Users/sorchanolan/Developer/zephyr/dts/arm/nrf52_pca10040.dts"
+ };
+};
+# 1 "dts/arm/nrf52_pca10040.dts_pre_compiled" 2

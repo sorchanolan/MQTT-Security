@@ -1,0 +1,7 @@
+nrf52_pca10040.o: dts/arm/nrf52_pca10040.dts_pre_compiled \
+ /Users/sorchanolan/MQTT_Security/Experiments/outdir/nrf52_pca10040/include/generated/autoconf.h \
+ /Users/sorchanolan/Developer/zephyr/dts/arm/nrf52_pca10040.dts \
+ /Users/sorchanolan/Developer/zephyr/dts/arm/nordic/nrf52832.dtsi \
+ /Users/sorchanolan/Developer/zephyr/dts/arm/armv7-m.dtsi \
+ /Users/sorchanolan/Developer/zephyr/dts/common/skeleton.dtsi \
+ /Users/sorchanolan/Developer/zephyr/dts/arm/nordic/mem.h
