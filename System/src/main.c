@@ -24,32 +24,7 @@
 #endif
 
 #include "mbedtls/platform.h"
-//#include "mbedtls/config.h"
-#include "mbedtls/cipher.h"
-#include "mbedtls/md4.h"
-#include "mbedtls/md5.h"
-#include "mbedtls/ripemd160.h"
-#include "mbedtls/sha1.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/sha512.h"
-#include "mbedtls/arc4.h"
-#include "mbedtls/des.h"
 #include "mbedtls/aes.h"
-#include "mbedtls/cmac.h"
-#include "mbedtls/blowfish.h"
-#include "mbedtls/camellia.h"
-#include "mbedtls/gcm.h"
-#include "mbedtls/ccm.h"
-#include "mbedtls/havege.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/hmac_drbg.h"
-#include "mbedtls/rsa.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/dhm.h"
-#include "mbedtls/ecdsa.h"
-#include "mbedtls/ecdh.h"
-#include "mbedtls/error.h"
-#include "mbedtls/memory_buffer_alloc.h"
 
 /* Container for some structures used by the MQTT publisher app. */
 struct mqtt_client_ctx {
@@ -70,9 +45,8 @@ static struct net_mgmt_event_callback cb;
 K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
-#define MESSAGE_128 "SawLFz4OB4Cx23d"
-#define NUM_MESSAGES 10
 #define TOPIC "t"
+#define PAYLOAD_SIZE 121
 
 #define RC_STR(rc)	((rc) == 0 ? "OK" : "ERROR")
 
@@ -85,10 +59,9 @@ static bool message_changed=false;
 const char* keys[] = {"Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GG"};
 static unsigned char* curr_msg[256];
 static char encrypted_msg[400];
-static int loop_count = 1;
+static unsigned char payload[PAYLOAD_SIZE];
 static int ret = 1;
 static int num = 0x1;
-static unsigned char tmp[600];
 
 unsigned long i;
 
@@ -101,9 +74,6 @@ static size_t prv_used, prv_blocks;
 
 #define SS_STACK_SIZE 2048
 #define SS_PRIORITY 5
-
-#define MEM_BLOCK_OVERHEAD  ( 2 * sizeof( size_t ) )
-#define HEAP_SIZE       (1u << 16)  // 64k
 #define BUFSIZE         500
 
 K_THREAD_STACK_DEFINE(ss_stack_area, SS_STACK_SIZE);
@@ -131,13 +101,12 @@ static void encrypt_aes_ctr(unsigned char* nonce) {
 	mbedtls_aes_setkey_enc( &ctr, keys[2], 256 );
 	mbedtls_aes_crypt_ctr( &ctr, BUFSIZE, &nc_offset, nonce, stream_block, "encrypt me", encrypted_msg );
 	mbedtls_aes_free( &ctr );
-    //strncpy(encrypted_msg, "help me", sizeof(encrypted_msg));
 }
 
 void message_thread()
 {
 	while(true) {
-		k_sleep(APP_SLEEP_MSECS);
+ 		k_sleep(1000);
 		k_mutex_lock(&pub_data, K_FOREVER);
 
 		unsigned char nonce_to_be_used[16];
@@ -149,30 +118,41 @@ void message_thread()
 		size_t msg_size = strlen(encrypted_msg);
 		printk("\nmsg:%s\n", encrypted_msg);
 		printk("\nnonce:%s\n", nonce_counter);
-		snprintf(tmp, sizeof(encrypted_msg) + sizeof(nonce_counter) + 1, "%s%s", nonce_counter, encrypted_msg);
-		prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
-	 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
-	 	PRINT_RESULT("mqtt_tx_publish", rc);
+
+		unsigned char tmp[msg_size + sizeof(nonce_counter) + 1];
+		snprintf(tmp, sizeof(tmp), "%s%s", nonce_counter, encrypted_msg);
 	 	printk("\nmsg with nonce:%s\n", tmp);
 
-		k_mutex_unlock(&pub_data);
+		int num_fragments = sizeof(tmp) / PAYLOAD_SIZE;
+		if (sizeof(tmp) % PAYLOAD_SIZE != 0)
+			num_fragments++;
+	 	printk("\nlength %d, %d fragments\n", sizeof(tmp), num_fragments);
+
+		for (i = 0; i < num_fragments; i++) {
+			snprintf(payload, sizeof(payload), "%d%s", i, tmp + (PAYLOAD_SIZE*i) - 1);
+	 		printk("\nmsg fragment:%s\n", payload);
+			prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
+		 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
+		 	if (rc < 0) 
+		 		break;
+		 	PRINT_RESULT("mqtt_tx_publish", rc);
+ 			k_sleep(1000);
+		}
+		k_mutex_unlock(&pub_data);	
 		k_sem_give(&pub_sem);
+		k_sleep(APP_SLEEP_MSECS);
 	}
 }
 
 static void start_message_thread()
 {
-	k_tid_t ss_tid = k_thread_create(&ss_thread, ss_stack_area,
+	k_thread_create(&ss_thread, ss_stack_area,
 								 K_THREAD_STACK_SIZEOF(ss_stack_area),
 								 message_thread,
 								 NULL, NULL, NULL,
-								 SS_PRIORITY, 0, K_NO_WAIT);
+								 SS_PRIORITY, 0, 2000);
 }
 
-
-/* The signature of this routine must match the connect callback declared at
- * the mqtt.h header.
- */
 static void connect_cb(struct mqtt_ctx *mqtt_ctx)
 {
 	struct mqtt_client_ctx *client_ctx;
@@ -189,9 +169,6 @@ static void connect_cb(struct mqtt_ctx *mqtt_ctx)
 	printk("\n");
 }
 
-/* The signature of this routine must match the disconnect callback declared at
- * the mqtt.h header.
- */
 static void disconnect_cb(struct mqtt_ctx *mqtt_ctx)
 {
 	struct mqtt_client_ctx *client_ctx;
@@ -208,19 +185,6 @@ static void disconnect_cb(struct mqtt_ctx *mqtt_ctx)
 	printk("\n");
 }
 
-/**
- * The signature of this routine must match the publish_tx callback declared at
- * the mqtt.h header.
- *
- * NOTE: we have two callbacks for MQTT Publish related stuff:
- *	- publish_tx, for publishers
- *	- publish_rx, for subscribers
- *
- * Applications must keep a "message database" with pkt_id's. So far, this is
- * not implemented here. For example, if we receive a PUBREC message with an
- * unknown pkt_id, this routine must return an error, for example -EINVAL or
- * any negative value.
- */
 static int publish_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
 		      enum mqtt_packet type)
 {
@@ -257,10 +221,6 @@ static int publish_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
 	return rc;
 }
 
-/**
- * The signature of this routine must match the malformed callback declared at
- * the mqtt.h header.
- */
 static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 {
 	printk("[%s:%d] pkt_type: %u\n", __func__, __LINE__, pkt_type);
@@ -268,15 +228,15 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 
 static char *get_message_payload(enum mqtt_qos qos) 
 {
-	static char payload[120];
-	snprintf(payload, sizeof(payload), "%s\n", tmp);
+	static char pl[PAYLOAD_SIZE];
+	snprintf(pl, sizeof(pl), "%s\n", payload);
 	return payload;
 }
 
 static void prepare_msg(struct mqtt_publish_msg *pub_msg,
 				     enum mqtt_qos qos)
 {
-	/* MQTT message payload may be anything, we we use C strings */
+	/* MQTT message payload may be anything, we use C strings */
 	pub_msg->msg = get_message_payload(qos);
 	/* Payload's length */
 	pub_msg->msg_len = strlen(pub_msg->msg);
@@ -402,7 +362,7 @@ exit_pub:
 
 static void start_publisher()
 {
-	k_tid_t tt_tid = k_thread_create(&pub_thread, pub_stack_area,
+	k_thread_create(&pub_thread, pub_stack_area,
                                  K_THREAD_STACK_SIZEOF(pub_stack_area),
                                  publisher_thread,
                                  NULL, NULL, NULL,
