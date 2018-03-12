@@ -72,7 +72,13 @@ K_MUTEX_DEFINE(pub_data);
 
 #define MESSAGE_128 "SawLFz4OB4Cx23d"
 #define NUM_MESSAGES 10
-#define TOPIC "topic"
+#define TOPIC "t"
+
+#define RC_STR(rc)	((rc) == 0 ? "OK" : "ERROR")
+
+#define PRINT_RESULT(func, rc)	\
+	printk("[%s:%d] %s: %d <%s>\n", __func__, __LINE__, \
+	       (func), rc, RC_STR(rc))
 
 static bool message_changed=false;
 
@@ -82,8 +88,8 @@ static char encrypted_msg[400];
 static int loop_count = 1;
 static int ret = 1;
 static int num = 0x1;
-static unsigned char tmp[200];
-static unsigned char nonce_counter[16];
+static unsigned char tmp[600];
+
 unsigned long i;
 
 static void prepare_msg(struct mqtt_publish_msg *pub_msg,
@@ -117,17 +123,15 @@ static char *rand_string(char *str, size_t size)
     return str;
 }
 
-static void encrypt_aes_ctr() {
+static void encrypt_aes_ctr(unsigned char* nonce) {
     size_t nc_offset = 0;
     unsigned char stream_block[16];
-    rand_string(nonce_counter, sizeof(nonce_counter));
-    printk("\nnonce:%s\n", nonce_counter);
 	mbedtls_aes_context ctr;
     mbedtls_aes_init( &ctr );
 	mbedtls_aes_setkey_enc( &ctr, keys[2], 256 );
-	mbedtls_aes_crypt_ctr( &ctr, BUFSIZE, &nc_offset, nonce_counter, stream_block, curr_msg, encrypted_msg );
+	mbedtls_aes_crypt_ctr( &ctr, BUFSIZE, &nc_offset, nonce, stream_block, "encrypt me", encrypted_msg );
 	mbedtls_aes_free( &ctr );
-    memset(nonce_counter, "", sizeof(nonce_counter));
+    //strncpy(encrypted_msg, "help me", sizeof(encrypted_msg));
 }
 
 void message_thread()
@@ -135,14 +139,21 @@ void message_thread()
 	while(true) {
 		k_sleep(APP_SLEEP_MSECS);
 		k_mutex_lock(&pub_data, K_FOREVER);
-		memset( curr_msg, ++num, sizeof( curr_msg ) );
 
-		encrypt_aes_ctr();
+		unsigned char nonce_to_be_used[16];
+		unsigned char nonce_counter[16];
+    	rand_string(nonce_to_be_used, sizeof(nonce_counter));
+    	strncpy(nonce_counter, nonce_to_be_used, sizeof(nonce_counter));
+		encrypt_aes_ctr(nonce_to_be_used);
 
 		size_t msg_size = strlen(encrypted_msg);
+		printk("\nmsg:%s\n", encrypted_msg);
+		printk("\nnonce:%s\n", nonce_counter);
+		snprintf(tmp, sizeof(encrypted_msg) + sizeof(nonce_counter) + 1, "%s%s", nonce_counter, encrypted_msg);
 		prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
 	 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
-	 	printk("\nmsg:%s\n", encrypted_msg);
+	 	PRINT_RESULT("mqtt_tx_publish", rc);
+	 	printk("\nmsg with nonce:%s\n", tmp);
 
 		k_mutex_unlock(&pub_data);
 		k_sem_give(&pub_sem);
@@ -257,9 +268,8 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 
 static char *get_message_payload(enum mqtt_qos qos) 
 {
-	static char payload[450];
-	snprintf(payload, sizeof(payload), "%s\n", encrypted_msg);
-	loop_count++;
+	static char payload[120];
+	snprintf(payload, sizeof(payload), "%s\n", tmp);
 	return payload;
 }
 
@@ -278,12 +288,6 @@ static void prepare_msg(struct mqtt_publish_msg *pub_msg,
 	/* Packet Identifier, always use different values */
 	pub_msg->pkt_id = sys_rand32_get();
 }
-
-#define RC_STR(rc)	((rc) == 0 ? "OK" : "ERROR")
-
-#define PRINT_RESULT(func, rc)	\
-	printk("[%s:%d] %s: %d <%s>\n", __func__, __LINE__, \
-	       (func), rc, RC_STR(rc))
 
 #define PUB_STACK_SIZE 2048
 #define PUB_PRIORITY 5
@@ -366,7 +370,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 			k_mutex_lock(&pub_data, K_FOREVER);
 
 			if (message_changed) {
-				prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
+				//prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
 				message_changed=false;
 				data_changed = true;
 			}
@@ -374,8 +378,8 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 			k_mutex_unlock(&pub_data);
 
 			if (data_changed) {
-				rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
-				PRINT_RESULT("mqtt_tx_publish", rc);
+				//rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
+				//PRINT_RESULT("mqtt_tx_publish", rc);
 			}
 		} while ((rc = k_sem_take(&pub_sem, APP_CONN_IDLE_TIMEOUT)) == 0);
 
