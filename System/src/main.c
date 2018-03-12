@@ -24,32 +24,7 @@
 #endif
 
 #include "mbedtls/platform.h"
-//#include "mbedtls/config.h"
-#include "mbedtls/cipher.h"
-#include "mbedtls/md4.h"
-#include "mbedtls/md5.h"
-#include "mbedtls/ripemd160.h"
-#include "mbedtls/sha1.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/sha512.h"
-#include "mbedtls/arc4.h"
-#include "mbedtls/des.h"
 #include "mbedtls/aes.h"
-#include "mbedtls/cmac.h"
-#include "mbedtls/blowfish.h"
-#include "mbedtls/camellia.h"
-#include "mbedtls/gcm.h"
-#include "mbedtls/ccm.h"
-#include "mbedtls/havege.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/hmac_drbg.h"
-#include "mbedtls/rsa.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/dhm.h"
-#include "mbedtls/ecdsa.h"
-#include "mbedtls/ecdh.h"
-#include "mbedtls/error.h"
-#include "mbedtls/memory_buffer_alloc.h"
 
 /* Container for some structures used by the MQTT publisher app. */
 struct mqtt_client_ctx {
@@ -70,28 +45,13 @@ static struct net_mgmt_event_callback cb;
 K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
-#define MESSAGE_128 "SawLFz4OB4Cx23d"
-#define NUM_MESSAGES 10
-#define TOPIC "topic"
+#define RC_STR(rc)	((rc) == 0 ? "OK" : "ERROR")
+#define PRINT_RESULT(func, rc)	\
+	printk("[%s:%d] %s: %d <%s>\n", __func__, __LINE__, \
+	       (func), rc, RC_STR(rc))
 
-static bool message_changed=false;
-
-const char* keys[] = {"Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GG"};
-static unsigned char* curr_msg[256];
-static char encrypted_msg[400];
-static int loop_count = 1;
-static int ret = 1;
-static int num = 0x1;
-static unsigned char tmp[200];
-static unsigned char nonce_counter[16];
-unsigned long i;
-
-static void prepare_msg(struct mqtt_publish_msg *pub_msg,
-				     enum mqtt_qos qos);
-static struct mqtt_client_ctx pub_ctx;
-                                     
-static size_t max_used, max_blocks, max_bytes;                        
-static size_t prv_used, prv_blocks;  
+#define TOPIC "t"
+#define UNENCRYPTED_MSG "hello please encrypt me"
 
 #define SS_STACK_SIZE 2048
 #define SS_PRIORITY 5
@@ -99,6 +59,22 @@ static size_t prv_used, prv_blocks;
 #define MEM_BLOCK_OVERHEAD  ( 2 * sizeof( size_t ) )
 #define HEAP_SIZE       (1u << 16)  // 64k
 #define BUFSIZE         500
+#define PAYLOAD_SIZE	122
+#define NONCE_SIZE		16
+#define FRAGMENT_OFFSET_SIZE 1
+
+static bool message_changed=false;
+
+const char* keys[] = {"Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GG"};
+//static unsigned char unencrypted_msg[50] = "hello please encrypt me";
+static unsigned char encrypted_msg[400];
+static unsigned char msg_to_send[PAYLOAD_SIZE];
+static unsigned char nonce_counter[NONCE_SIZE];
+unsigned long i;
+
+static void prepare_msg(struct mqtt_publish_msg *pub_msg,
+				     enum mqtt_qos qos, unsigned char* msg_to_send);
+static struct mqtt_client_ctx pub_ctx;
 
 K_THREAD_STACK_DEFINE(ss_stack_area, SS_STACK_SIZE);
 struct k_thread ss_thread;
@@ -110,14 +86,14 @@ static char *rand_string(char *str, size_t size)
         --size;
         for (size_t n = 0; n < size; n++) {
             int key = rand() % (int) (sizeof charset - 1);
-            str[n] = charset[key];
+            str[n] = 'a';//charset[key];
         }
         str[size] = '\0';
     }
     return str;
 }
 
-static void encrypt_aes_ctr() {
+static void encrypt_aes_ctr(unsigned char *encrypted_msg, unsigned char* nonce_counter) {
     size_t nc_offset = 0;
     unsigned char stream_block[16];
     rand_string(nonce_counter, sizeof(nonce_counter));
@@ -125,9 +101,9 @@ static void encrypt_aes_ctr() {
 	mbedtls_aes_context ctr;
     mbedtls_aes_init( &ctr );
 	mbedtls_aes_setkey_enc( &ctr, keys[2], 256 );
-	mbedtls_aes_crypt_ctr( &ctr, BUFSIZE, &nc_offset, nonce_counter, stream_block, curr_msg, encrypted_msg );
+	mbedtls_aes_crypt_ctr( &ctr, BUFSIZE, &nc_offset, nonce_counter, stream_block, UNENCRYPTED_MSG, encrypted_msg );
 	mbedtls_aes_free( &ctr );
-    memset(nonce_counter, "", sizeof(nonce_counter));
+	memset(encrypted_msg, "s", 100);
 }
 
 void message_thread()
@@ -135,33 +111,67 @@ void message_thread()
 	while(true) {
 		k_sleep(APP_SLEEP_MSECS);
 		k_mutex_lock(&pub_data, K_FOREVER);
-		memset( curr_msg, ++num, sizeof( curr_msg ) );
+		// static unsigned char encrypted_msg[400];
+		// static unsigned char msg_to_send[PAYLOAD_SIZE];
+		// static unsigned char nonce_counter[NONCE_SIZE];
 
-		encrypt_aes_ctr();
-
+		encrypt_aes_ctr(encrypted_msg, nonce_counter);
 		size_t msg_size = strlen(encrypted_msg);
-		prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
-	 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
-	 	printk("\nmsg:%s\n", encrypted_msg);
+	 	printk("\nmsg (%d):%s\n", msg_size, encrypted_msg);
 
-		k_mutex_unlock(&pub_data);
-		k_sem_give(&pub_sem);
-	}
+	 // 	int char_count = 0;
+	 // 	unsigned char num_fragments = 0;
+		// while (char_count <= msg_size) {
+			// k_sleep(APP_SLEEP_MSECS);
+			// k_mutex_lock(&pub_data, K_FOREVER);
+
+			// static unsigned char fragment[PAYLOAD_SIZE - FRAGMENT_OFFSET_SIZE];
+			// int fragment_size = PAYLOAD_SIZE - NONCE_SIZE - FRAGMENT_OFFSET_SIZE - 1;
+			// strncpy(fragment, encrypted_msg, fragment_size);
+			// snprintf(msg_to_send, sizeof(msg_to_send), "%c%s%s\n", 0, nonce_counter, fragment);
+
+			// unsigned char fragment[PAYLOAD_SIZE - FRAGMENT_OFFSET_SIZE];
+			// if (num_fragments == 0) {
+			// 	strncpy(fragment, encrypted_msg, PAYLOAD_SIZE - NONCE_SIZE - FRAGMENT_OFFSET_SIZE - 1);
+			// 	snprintf(msg_to_send, sizeof(msg_to_send), "%c%s%s\n", num_fragments, nonce_counter, fragment);
+			// 	char_count += PAYLOAD_SIZE - NONCE_SIZE - FRAGMENT_OFFSET_SIZE - 1;
+			// } else {
+			// 	strncpy(fragment, encrypted_msg+char_count, PAYLOAD_SIZE - FRAGMENT_OFFSET_SIZE - 1);
+			// 	snprintf(msg_to_send, sizeof(msg_to_send), "%c%s\n", num_fragments, fragment);
+			// 	char_count+= PAYLOAD_SIZE - FRAGMENT_OFFSET_SIZE - 1;
+			// }
+
+			strcpy(msg_to_send, encrypted_msg);
+			printk("\nmsg to send:%s\n", msg_to_send);
+			prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0, msg_to_send);
+			int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
+			PRINT_RESULT("mqtt_tx_publish", rc);
+			//num_fragments++;
+		 // 	message_changed = true;
+			k_mutex_unlock(&pub_data);
+			k_sem_give(&pub_sem);
+	// 		k_sleep(APP_SLEEP_MSECS);
+		}
+	// }
 }
+
+// static char *get_message_payload(enum mqtt_qos qos) 
+// {
+// 	// static char payload[PAYLOAD_SIZE];
+// 	// snprintf(payload, sizeof(payload), "%s\n", msg_to_send);
+// 	printk("\npayload:%s\n", msg_to_send);
+// 	return msg_to_send;
+// }
 
 static void start_message_thread()
 {
-	k_tid_t ss_tid = k_thread_create(&ss_thread, ss_stack_area,
+	k_thread_create(&ss_thread, ss_stack_area,
 								 K_THREAD_STACK_SIZEOF(ss_stack_area),
 								 message_thread,
 								 NULL, NULL, NULL,
 								 SS_PRIORITY, 0, K_NO_WAIT);
 }
 
-
-/* The signature of this routine must match the connect callback declared at
- * the mqtt.h header.
- */
 static void connect_cb(struct mqtt_ctx *mqtt_ctx)
 {
 	struct mqtt_client_ctx *client_ctx;
@@ -178,9 +188,6 @@ static void connect_cb(struct mqtt_ctx *mqtt_ctx)
 	printk("\n");
 }
 
-/* The signature of this routine must match the disconnect callback declared at
- * the mqtt.h header.
- */
 static void disconnect_cb(struct mqtt_ctx *mqtt_ctx)
 {
 	struct mqtt_client_ctx *client_ctx;
@@ -197,19 +204,6 @@ static void disconnect_cb(struct mqtt_ctx *mqtt_ctx)
 	printk("\n");
 }
 
-/**
- * The signature of this routine must match the publish_tx callback declared at
- * the mqtt.h header.
- *
- * NOTE: we have two callbacks for MQTT Publish related stuff:
- *	- publish_tx, for publishers
- *	- publish_rx, for subscribers
- *
- * Applications must keep a "message database" with pkt_id's. So far, this is
- * not implemented here. For example, if we receive a PUBREC message with an
- * unknown pkt_id, this routine must return an error, for example -EINVAL or
- * any negative value.
- */
 static int publish_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
 		      enum mqtt_packet type)
 {
@@ -246,28 +240,16 @@ static int publish_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
 	return rc;
 }
 
-/**
- * The signature of this routine must match the malformed callback declared at
- * the mqtt.h header.
- */
 static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 {
 	printk("[%s:%d] pkt_type: %u\n", __func__, __LINE__, pkt_type);
 }
 
-static char *get_message_payload(enum mqtt_qos qos) 
+static void prepare_msg(struct mqtt_publish_msg *pub_msg, enum mqtt_qos qos, unsigned char* msg_to_send)
 {
-	static char payload[450];
-	snprintf(payload, sizeof(payload), "%s\n", encrypted_msg);
-	loop_count++;
-	return payload;
-}
-
-static void prepare_msg(struct mqtt_publish_msg *pub_msg,
-				     enum mqtt_qos qos)
-{
+	//printk("\nsending:%s\n", msg_to_send);
 	/* MQTT message payload may be anything, we we use C strings */
-	pub_msg->msg = get_message_payload(qos);
+	pub_msg->msg = msg_to_send;
 	/* Payload's length */
 	pub_msg->msg_len = strlen(pub_msg->msg);
 	/* MQTT Quality of Service */
@@ -279,12 +261,6 @@ static void prepare_msg(struct mqtt_publish_msg *pub_msg,
 	pub_msg->pkt_id = sys_rand32_get();
 }
 
-#define RC_STR(rc)	((rc) == 0 ? "OK" : "ERROR")
-
-#define PRINT_RESULT(func, rc)	\
-	printk("[%s:%d] %s: %d <%s>\n", __func__, __LINE__, \
-	       (func), rc, RC_STR(rc))
-
 #define PUB_STACK_SIZE 2048
 #define PUB_PRIORITY 5
 
@@ -293,6 +269,7 @@ struct k_thread pub_thread;
 
 void publisher_thread(void * unused1, void * unused2, void * unused3)
 {
+	printk("Start publisher thread");
 	ARG_UNUSED(unused1);
 	ARG_UNUSED(unused2);
 	ARG_UNUSED(unused3);
@@ -330,8 +307,10 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 	pub_ctx.disconnect_data = "DISCONNECTED";
 	pub_ctx.publish_data = "PUBLISH";
 
-	while ((rc = k_sem_take(&pub_sem, K_FOREVER)) == 0) {
+	printk("pub ctx set up\n");
 
+	while ((rc = k_sem_take(&pub_sem, K_FOREVER)) == 0) {
+		printk("loop\n");
 		rc = mqtt_init(&pub_ctx.mqtt_ctx, MQTT_APP_PUBLISHER);
 		PRINT_RESULT("mqtt_init", rc);
 
@@ -366,7 +345,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 			k_mutex_lock(&pub_data, K_FOREVER);
 
 			if (message_changed) {
-				prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
+				prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0, '\0');
 				message_changed=false;
 				data_changed = true;
 			}
@@ -398,7 +377,7 @@ exit_pub:
 
 static void start_publisher()
 {
-	k_tid_t tt_tid = k_thread_create(&pub_thread, pub_stack_area,
+	k_thread_create(&pub_thread, pub_stack_area,
                                  K_THREAD_STACK_SIZEOF(pub_stack_area),
                                  publisher_thread,
                                  NULL, NULL, NULL,
