@@ -57,7 +57,8 @@ K_MUTEX_DEFINE(pub_data);
 
 static bool message_changed=false;
 
-const char* keys[] = {"Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GG"};
+const char* keys[] = {"Gv5BBQvjxDFNgjyo", "rh4KTvALW6pyHRKr36yUcu4o", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GGo"};
+static unsigned char msg_to_send[] = "bet you cant encrypt me";
 static char encrypted_msg[400];
 static unsigned char payload[PAYLOAD_SIZE];
 
@@ -90,11 +91,12 @@ static char *rand_string(char *str, size_t size)
 
 static void encrypt_aes_ctr(unsigned char* nonce) {
     size_t nc_offset = 0;
-    unsigned char stream_block[16];
+    unsigned char stream_block[52];
 	mbedtls_aes_context ctr;
     mbedtls_aes_init( &ctr );
 	mbedtls_aes_setkey_enc( &ctr, keys[2], 256 );
-	mbedtls_aes_crypt_ctr( &ctr, BUFSIZE, &nc_offset, nonce, stream_block, "encrypt me", encrypted_msg );
+	//printk("\nlength: %d\n", strlen(msg_to_send));
+	mbedtls_aes_crypt_ctr( &ctr, 52, &nc_offset, nonce, stream_block, "bet you cant encrypt me you piece of shit give it up", encrypted_msg );
 	mbedtls_aes_free( &ctr );
 }
 
@@ -104,31 +106,31 @@ void message_thread()
  		k_sleep(1000);
 		k_mutex_lock(&pub_data, K_FOREVER);
 
-		unsigned char nonce_to_be_used[16];
-		unsigned char nonce_counter[16];
+		unsigned char nonce_to_be_used[17];
+		unsigned char nonce_counter[17];
     	rand_string(nonce_to_be_used, sizeof(nonce_counter));
     	strncpy(nonce_counter, nonce_to_be_used, sizeof(nonce_counter));
 		encrypt_aes_ctr(nonce_to_be_used);
 
 		size_t msg_size = strlen(encrypted_msg);
 		printk("\nmsg:%s\n", encrypted_msg);
-		printk("\nnonce:%s\n", nonce_counter);
+		// printk("\nnonce:%s\n", nonce_counter);
 
 		unsigned char tmp[msg_size + sizeof(nonce_counter) + 1];
 		snprintf(tmp, sizeof(tmp), "%s%s", nonce_counter, encrypted_msg);
-	 	printk("\nmsg with nonce:%s\n", tmp);
+	 	// printk("\nmsg with nonce:%s\n", tmp);
 
 		int num_fragments = sizeof(tmp) / (PAYLOAD_SIZE-2);
 		if (sizeof(tmp) % PAYLOAD_SIZE != 0)
 			num_fragments++;
-	 	printk("\nlength %d, %d fragments\n", sizeof(tmp), num_fragments);
+	 	// printk("\nlength %d, %d fragments\n", sizeof(tmp), num_fragments);
 
 		for (i = 1; i <= num_fragments; i++) {
 			char fragment_offset = (char) i;
 			if (i == num_fragments)
 				fragment_offset = 0xff;
 			snprintf(payload, sizeof(payload), "%c%s", fragment_offset, tmp + ((PAYLOAD_SIZE-2)*(i-1)));
-	 		printk("\nmsg fragment %d:%s\n", i, payload);
+	 		// printk("\nmsg fragment %d:%s\n", i, payload);
 			prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
 		 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
 		 	PRINT_RESULT("mqtt_tx_publish", rc);
