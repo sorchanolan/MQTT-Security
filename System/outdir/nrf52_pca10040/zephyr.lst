@@ -1733,7 +1733,7 @@ static int publish_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
 
 	printk("[%s:%d] <%s> packet id: %u", __func__, __LINE__, str, pkt_id);
     1452:	9100      	str	r1, [sp, #0]
-    1454:	22d4      	movs	r2, #212	; 0xd4
+    1454:	22ce      	movs	r2, #206	; 0xce
     1456:	490d      	ldr	r1, [pc, #52]	; (148c <publish_cb+0x58>)
     1458:	480d      	ldr	r0, [pc, #52]	; (1490 <publish_cb+0x5c>)
     145a:	f001 fdc5 	bl	2fe8 <printk>
@@ -1784,7 +1784,7 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
     14a4:	b508      	push	{r3, lr}
 	printk("[%s:%d] pkt_type: %u\n", __func__, __LINE__, pkt_type);
     14a6:	460b      	mov	r3, r1
-    14a8:	22e2      	movs	r2, #226	; 0xe2
+    14a8:	22dc      	movs	r2, #220	; 0xdc
     14aa:	4902      	ldr	r1, [pc, #8]	; (14b4 <malformed_cb+0x10>)
     14ac:	4802      	ldr	r0, [pc, #8]	; (14b8 <malformed_cb+0x14>)
     14ae:	f001 fd9b 	bl	2fe8 <printk>
@@ -1797,7 +1797,7 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
     14bc:	b510      	push	{r4, lr}
     14be:	4604      	mov	r4, r0
 	printk("[%s:%d]", __func__, __LINE__);
-    14c0:	22b2      	movs	r2, #178	; 0xb2
+    14c0:	22ac      	movs	r2, #172	; 0xac
     14c2:	4907      	ldr	r1, [pc, #28]	; (14e0 <disconnect_cb+0x24>)
     14c4:	4807      	ldr	r0, [pc, #28]	; (14e4 <disconnect_cb+0x28>)
     14c6:	f001 fd8f 	bl	2fe8 <printk>
@@ -1822,7 +1822,7 @@ static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
     14f0:	b510      	push	{r4, lr}
     14f2:	4604      	mov	r4, r0
 	printk("[%s:%d]", __func__, __LINE__);
-    14f4:	22a2      	movs	r2, #162	; 0xa2
+    14f4:	229c      	movs	r2, #156	; 0x9c
     14f6:	4907      	ldr	r1, [pc, #28]	; (1514 <connect_cb+0x24>)
     14f8:	4807      	ldr	r0, [pc, #28]	; (1518 <connect_cb+0x28>)
     14fa:	f001 fd75 	bl	2fe8 <printk>
@@ -1996,7 +1996,7 @@ static void prepare_msg(struct mqtt_publish_msg *pub_msg,
     1624:	9301      	str	r3, [sp, #4]
     1626:	9000      	str	r0, [sp, #0]
     1628:	4b49      	ldr	r3, [pc, #292]	; (1750 <message_thread+0x138>)
-    162a:	228a      	movs	r2, #138	; 0x8a
+    162a:	2284      	movs	r2, #132	; 0x84
     162c:	4949      	ldr	r1, [pc, #292]	; (1754 <message_thread+0x13c>)
     162e:	484a      	ldr	r0, [pc, #296]	; (1758 <message_thread+0x140>)
     1630:	f001 fcda 	bl	2fe8 <printk>
@@ -2015,8 +2015,8 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_SLEEP, k_sleep, s32_t, duration);
     1642:	6013      	str	r3, [r2, #0]
     1644:	4b45      	ldr	r3, [pc, #276]	; (175c <message_thread+0x144>)
     1646:	681b      	ldr	r3, [r3, #0]
-    1648:	42a3      	cmp	r3, r4
-    164a:	d222      	bcs.n	1692 <message_thread+0x7a>
+    1648:	429c      	cmp	r4, r3
+    164a:	dd22      	ble.n	1692 <message_thread+0x7a>
 			snprintf(payload, sizeof(payload), "%d%s", i, tmp + (PAYLOAD_SIZE*i) - 1);
     164c:	ebc3 1203 	rsb	r2, r3, r3, lsl #4
     1650:	eb03 02c2 	add.w	r2, r3, r2, lsl #3
@@ -2259,7 +2259,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
     180c:	9301      	str	r3, [sp, #4]
     180e:	9400      	str	r4, [sp, #0]
     1810:	4b5d      	ldr	r3, [pc, #372]	; (1988 <publisher_thread+0x1f0>)
-    1812:	f240 1235 	movw	r2, #309	; 0x135
+    1812:	f240 122f 	movw	r2, #303	; 0x12f
     1816:	495d      	ldr	r1, [pc, #372]	; (198c <publisher_thread+0x1f4>)
     1818:	485d      	ldr	r0, [pc, #372]	; (1990 <publisher_thread+0x1f8>)
     181a:	f001 fbe5 	bl	2fe8 <printk>
@@ -2292,7 +2292,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
     183e:	9301      	str	r3, [sp, #4]
     1840:	9500      	str	r5, [sp, #0]
     1842:	4b56      	ldr	r3, [pc, #344]	; (199c <publisher_thread+0x204>)
-    1844:	f240 123f 	movw	r2, #319	; 0x13f
+    1844:	f240 1239 	movw	r2, #313	; 0x139
     1848:	4950      	ldr	r1, [pc, #320]	; (198c <publisher_thread+0x1f4>)
     184a:	4851      	ldr	r0, [pc, #324]	; (1990 <publisher_thread+0x1f8>)
     184c:	f001 fbcc 	bl	2fe8 <printk>
@@ -2372,7 +2372,7 @@ K_SYSCALL_DECLARE2(K_SYSCALL_K_MUTEX_LOCK, k_mutex_lock, int, struct k_mutex *, 
     18d0:	9201      	str	r2, [sp, #4]
     18d2:	9300      	str	r3, [sp, #0]
     18d4:	4b35      	ldr	r3, [pc, #212]	; (19ac <publisher_thread+0x214>)
-    18d6:	f240 125b 	movw	r2, #347	; 0x15b
+    18d6:	f240 1255 	movw	r2, #341	; 0x155
     18da:	492c      	ldr	r1, [pc, #176]	; (198c <publisher_thread+0x1f4>)
     18dc:	482c      	ldr	r0, [pc, #176]	; (1990 <publisher_thread+0x1f8>)
     18de:	f001 fb83 	bl	2fe8 <printk>
@@ -2393,7 +2393,7 @@ K_SYSCALL_DECLARE1_VOID(K_SYSCALL_K_SLEEP, k_sleep, s32_t, duration);
     18f8:	9201      	str	r2, [sp, #4]
     18fa:	9300      	str	r3, [sp, #0]
     18fc:	4b2c      	ldr	r3, [pc, #176]	; (19b0 <publisher_thread+0x218>)
-    18fe:	f44f 72b0 	mov.w	r2, #352	; 0x160
+    18fe:	f44f 72ad 	mov.w	r2, #346	; 0x15a
     1902:	4922      	ldr	r1, [pc, #136]	; (198c <publisher_thread+0x1f4>)
     1904:	4822      	ldr	r0, [pc, #136]	; (1990 <publisher_thread+0x1f8>)
     1906:	f001 fb6f 	bl	2fe8 <printk>
@@ -2417,7 +2417,7 @@ K_SYSCALL_DECLARE2(K_SYSCALL_K_SEM_TAKE, k_sem_take, int, struct k_sem *, sem, s
     1930:	9301      	str	r3, [sp, #4]
     1932:	9500      	str	r5, [sp, #0]
     1934:	4b1f      	ldr	r3, [pc, #124]	; (19b4 <publisher_thread+0x21c>)
-    1936:	f44f 7296 	mov.w	r2, #300	; 0x12c
+    1936:	f44f 7293 	mov.w	r2, #294	; 0x126
     193a:	4914      	ldr	r1, [pc, #80]	; (198c <publisher_thread+0x1f4>)
     193c:	4814      	ldr	r0, [pc, #80]	; (1990 <publisher_thread+0x1f8>)
     193e:	f001 fb53 	bl	2fe8 <printk>

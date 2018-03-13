@@ -57,20 +57,14 @@ K_MUTEX_DEFINE(pub_data);
 static bool message_changed=false;
 
 const char* keys[] = {"Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GG"};
-static unsigned char* curr_msg[256];
 static char encrypted_msg[400];
 static unsigned char payload[PAYLOAD_SIZE];
-static int ret = 1;
-static int num = 0x1;
 
-unsigned long i;
+int i;
 
 static void prepare_msg(struct mqtt_publish_msg *pub_msg,
 				     enum mqtt_qos qos);
 static struct mqtt_client_ctx pub_ctx;
-                                     
-static size_t max_used, max_blocks, max_bytes;                        
-static size_t prv_used, prv_blocks;  
 
 #define SS_STACK_SIZE 2048
 #define SS_PRIORITY 5
