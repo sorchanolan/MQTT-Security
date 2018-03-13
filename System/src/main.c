@@ -13,6 +13,7 @@
 #include <misc/printk.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "config.h"
@@ -46,7 +47,7 @@ K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
 #define TOPIC "t"
-#define PAYLOAD_SIZE 121
+#define PAYLOAD_SIZE 124
 
 #define RC_STR(rc)	((rc) == 0 ? "OK" : "ERROR")
 
@@ -117,19 +118,22 @@ void message_thread()
 		snprintf(tmp, sizeof(tmp), "%s%s", nonce_counter, encrypted_msg);
 	 	printk("\nmsg with nonce:%s\n", tmp);
 
-		int num_fragments = sizeof(tmp) / PAYLOAD_SIZE;
+		int num_fragments = sizeof(tmp) / (PAYLOAD_SIZE-2);
 		if (sizeof(tmp) % PAYLOAD_SIZE != 0)
 			num_fragments++;
 	 	printk("\nlength %d, %d fragments\n", sizeof(tmp), num_fragments);
 
-		for (i = 0; i < num_fragments; i++) {
-			snprintf(payload, sizeof(payload), "%d%s", i, tmp + (PAYLOAD_SIZE*i) - 1);
-	 		printk("\nmsg fragment:%s\n", payload);
+		for (i = 1; i <= num_fragments; i++) {
+			char fragment_offset = (char) i;
+			if (i == num_fragments)
+				fragment_offset = 0xff;
+			snprintf(payload, sizeof(payload), "%c%s", fragment_offset, tmp + ((PAYLOAD_SIZE-2)*(i-1)));
+	 		printk("\nmsg fragment %d:%s\n", i, payload);
 			prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
 		 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
+		 	PRINT_RESULT("mqtt_tx_publish", rc);
 		 	if (rc < 0) 
 		 		break;
-		 	PRINT_RESULT("mqtt_tx_publish", rc);
  			k_sleep(1000);
 		}
 		k_mutex_unlock(&pub_data);	
@@ -144,7 +148,7 @@ static void start_message_thread()
 								 K_THREAD_STACK_SIZEOF(ss_stack_area),
 								 message_thread,
 								 NULL, NULL, NULL,
-								 SS_PRIORITY, 0, 2000);
+								 SS_PRIORITY, 0, K_NO_WAIT);
 }
 
 static void connect_cb(struct mqtt_ctx *mqtt_ctx)
