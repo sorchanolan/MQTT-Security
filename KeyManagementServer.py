@@ -6,6 +6,7 @@ import datetime
 import MySQLdb
 import string
 import random
+import base64
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
@@ -59,8 +60,8 @@ def getNewKey(username, pwdhash, length):
 		except:
 		   	db.rollback()
 	   	privateKey = getPrivateKey(userId)
-	   	encryptedKey = encrypt(privateKey, key)
-	   	print encryptedKey
+	   	encryptedKey = encrypt(privateKey, key).decode("utf-8")
+	   	print key
 	return jsonify({"access": access, "key": encryptedKey})
 
 def post():
@@ -96,7 +97,7 @@ def getPrivateKey(userId):
 def encrypt(privateKey, keyToEncrypt):
 	nonce = randomString(16)
 	aes = AES.new(privateKey, AES.MODE_CTR, counter=lambda:nonce)
-	return nonce + aes.encrypt(keyToEncrypt)
+	return base64.b64encode(nonce + aes.encrypt(keyToEncrypt))
 
 def decrypt(privateKey, encryptedKey):
 	nonce = encryptedKey[:17]

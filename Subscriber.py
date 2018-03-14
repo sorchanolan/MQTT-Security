@@ -5,6 +5,7 @@ import requests
 import hashlib
 from flask_restful import Resource, Api
 from flask import Flask, request
+import base64
 
 # Define Variables
 MQTT_HOST = "127.0.0.1"
@@ -59,6 +60,7 @@ def decrypt(encrypted_msg, nonce, key):
 	aes = AES.new(key, AES.MODE_CTR, counter=lambda:nonce)
 	decrypted = aes.decrypt(encrypted_msg)
 	print "decrypted msg " + decrypted
+	return decrypted
 
 def registerWithKms(pwdhash):
 	global username, privateKey
@@ -73,9 +75,11 @@ def getNewKey(pwdhash):
 	global username
 	response = requests.get("%s/new/%s/%s/%d" % (BASE_URL, username, pwdhash, 32))
 	if response.json()['access'] is True:
-		encryptedMsg = response.json()['key']
-		print "New key: " + encryptedMsg
-		decrypt(encryptedMsg[17:], encryptedMsg[:17], privateKey)
+		encryptedMsg = base64.b64decode(response.json()['key'])
+		nonce = encryptedMsg[:16]
+		encryptedMsg = encryptedMsg[16:]
+		print "Nonce: " + nonce + " encrypted msg: " + encryptedMsg
+		newKey = decrypt(encryptedMsg, nonce, privateKey)
 	else:
 		print "Access restricted"
 
