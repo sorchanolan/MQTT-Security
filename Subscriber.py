@@ -83,6 +83,18 @@ def getNewKey(pwdhash):
 	else:
 		print "Access restricted"
 
+def getExistingKey(pwdhash, keyId):
+	global username
+	response = requests.get("%s/existing/%s/%s/%d" % (BASE_URL, username, pwdhash, keyId))
+	if response.json()['access'] is True:
+		encryptedMsg = base64.b64decode(response.json()['key'])
+		nonce = encryptedMsg[:16]
+		encryptedMsg = encryptedMsg[16:]
+		print "Nonce: " + nonce + " encrypted msg: " + encryptedMsg
+		existingKey = decrypt(encryptedMsg, nonce, privateKey)
+	else:
+		print "Access restricted"
+
 mqttc = mqtt.Client()
 
 mqttc.on_message = on_message
@@ -95,4 +107,5 @@ if __name__ == '__main__':
 	pwdhash = hashlib.sha1(password).hexdigest()
 	registerWithKms(pwdhash)
 	getNewKey(pwdhash)
+	getExistingKey(pwdhash, 55)
 	mqttc.loop_forever()

@@ -60,12 +60,32 @@ def getNewKey(username, pwdhash, length):
 		except:
 		   	db.rollback()
 	   	privateKey = getPrivateKey(userId)
-	   	encryptedKey = encrypt(privateKey, key).decode("utf-8")
+	   	encryptedKey = encrypt(privateKey, key)#.decode("utf-8")
 	   	print key
 	return jsonify({"access": access, "key": encryptedKey})
 
-def post():
-	print "post"
+@app.route('/KMS/existing/<username>/<pwdhash>/<int:keyId>')
+def getExistingKey(username, pwdhash, keyId):
+	access = False
+	encryptedKey = None
+	userId = getUserId(username, pwdhash)
+	if userId is not None:
+		ts = datetime.datetime.now().strftime("%s")
+		sql = "SELECT * FROM `Keys` WHERE id = '%d' AND expiration_ts > '%s'" % (keyId, ts)
+		try:
+			cursor.execute(sql)
+			keyobj = cursor.fetchone()
+			if keyobj is not None:
+				access = True
+				key = keyobj[1]
+				privateKey = getPrivateKey(userId)
+	   			encryptedKey = encrypt(privateKey, key)
+	   			print key
+   			else:
+   				print "This key is not available"
+		except:
+			print "User not found"
+	return jsonify({"access": access, "key": encryptedKey})
 
 def getUserId(username, pwdhash):
 	sql = "SELECT * FROM Users WHERE username = '%s' AND password = '%s'" % (username, pwdhash)
