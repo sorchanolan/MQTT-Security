@@ -1,12 +1,14 @@
 from flask_restful import Resource, Api
 from flask import Flask, request, jsonify
 from Crypto.Cipher import AES
+from Crypto.Util import Counter
 import time
 import datetime
 import MySQLdb
 import string
 import random
 import base64
+import binascii
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
@@ -114,14 +116,19 @@ def getPrivateKey(userId):
 		print "Private key not found"
 	return None
 
+def int_of_string(s):
+    return int(binascii.hexlify(s), 16)
+
 def encrypt(privateKey, keyToEncrypt):
 	nonce = randomString(16)
-	aes = AES.new(privateKey, AES.MODE_CTR, counter=lambda:nonce)
+	ctr = Counter.new(128, initial_value=int_of_string(nonce))
+	aes = AES.new(privateKey, AES.MODE_CTR, counter=ctr)
 	return base64.b64encode(nonce + aes.encrypt(keyToEncrypt))
 
 def decrypt(privateKey, encryptedKey):
 	nonce = encryptedKey[:17]
-	aes = AES.new(privateKey, AES.MODE_CTR, counter=lambda:nonce)
+	ctr = Counter.new(128, initial_value=int_of_string(nonce))
+	aes = AES.new(privateKey, AES.MODE_CTR, counter=ctr)
 	return aes.decrypt(encryptedKey[17:])
 
 def randomString(length):

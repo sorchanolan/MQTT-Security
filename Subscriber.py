@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
 from Crypto.Cipher import AES
+from Crypto.Util import Counter
 import binascii
 import requests
 import hashlib
@@ -51,16 +52,26 @@ def on_message(mosq, obj, msg):
 		# file2write=open("encrypted_data.txt",'a')
 		# file2write.write(current_msg + '\n')
 		# file2write.close()
-		print "encrypted msg " + binascii.hexlify(current_msg)
-		decrypt(current_msg, current_nonce)
+		print "Encrypted message with nonce: " + current_nonce + current_msg
+		decrypt(current_msg, current_nonce, keys[2])
 		current_msg = ""
 
 def decrypt(encrypted_msg, nonce, key):
 	global current_nonce
-	aes = AES.new(key, AES.MODE_CTR, counter=lambda:nonce)
+	ctr = Counter.new(128, initial_value=int_of_string(nonce))
+	aes = AES.new(key, AES.MODE_CTR, counter=ctr)
 	decrypted = aes.decrypt(encrypted_msg)
-	print "decrypted msg " + decrypted
+	print "Original message: " + decrypted
 	return decrypted
+
+def incrementNonce(nonce):
+	for i in range (16, 0):
+		if ++nonce[i - 1] != 0:
+			break
+		return nonce
+
+def int_of_string(s):
+    return int(binascii.hexlify(s), 16)
 
 def registerWithKms(pwdhash):
 	global username, privateKey

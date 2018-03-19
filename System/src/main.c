@@ -26,6 +26,7 @@
 
 #include "mbedtls/platform.h"
 #include "mbedtls/aes.h"
+#include "mbedtls/base64.h"
 
 /* Container for some structures used by the MQTT publisher app. */
 struct mqtt_client_ctx {
@@ -49,6 +50,8 @@ K_MUTEX_DEFINE(pub_data);
 #define TOPIC "t"
 #define PAYLOAD_SIZE 124
 
+#define NELEMENTS(x)  (sizeof(x) / sizeof((x)[0]))
+
 #define RC_STR(rc)	((rc) == 0 ? "OK" : "ERROR")
 
 #define PRINT_RESULT(func, rc)	\
@@ -58,7 +61,7 @@ K_MUTEX_DEFINE(pub_data);
 static bool message_changed=false;
 
 const char* keys[] = {"Gv5BBQvjxDFNgjyo", "rh4KTvALW6pyHRKr36yUcu4o", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GGo"};
-static unsigned char msg_to_send[] = "bet you cant encrypt me";
+static unsigned char* msgs_to_send[] = {"try encrypt thishello", "hello", "hello my name is Sorcha Nolan and I would like to be encrypted", "hi Stefan       ", "yay it works well I hope it does i dunno", "encrypt me you piece of shit"};
 static char encrypted_msg[400];
 static unsigned char payload[PAYLOAD_SIZE];
 
@@ -89,41 +92,48 @@ static char *rand_string(char *str, size_t size)
     return str;
 }
 
-static void encrypt_aes_ctr(unsigned char* nonce) {
+static void encrypt_aes_ctr(unsigned char* nonce, unsigned char* msg_to_send) {
     size_t nc_offset = 0;
-    unsigned char stream_block[52];
+    unsigned char stream_block[strlen(msg_to_send)];
 	mbedtls_aes_context ctr;
     mbedtls_aes_init( &ctr );
 	mbedtls_aes_setkey_enc( &ctr, keys[2], 256 );
-	//printk("\nlength: %d\n", strlen(msg_to_send));
-	mbedtls_aes_crypt_ctr( &ctr, 52, &nc_offset, nonce, stream_block, "bet you cant encrypt me you piece of shit give it up", encrypted_msg );
+	mbedtls_aes_crypt_ctr( &ctr, strlen(msg_to_send), &nc_offset, nonce, stream_block, msg_to_send, encrypted_msg );
 	mbedtls_aes_free( &ctr );
 }
 
 void message_thread()
 {
+	int index = 0;
 	while(true) {
  		k_sleep(1000);
 		k_mutex_lock(&pub_data, K_FOREVER);
 
+		memset(&encrypted_msg, 0x00, sizeof(encrypted_msg));
 		unsigned char nonce_to_be_used[17];
 		unsigned char nonce_counter[17];
     	rand_string(nonce_to_be_used, sizeof(nonce_counter));
     	strncpy(nonce_counter, nonce_to_be_used, sizeof(nonce_counter));
-		encrypt_aes_ctr(nonce_to_be_used);
+		printk("\nMessage to send: %s\n", msgs_to_send[index]);
+		encrypt_aes_ctr(nonce_to_be_used, msgs_to_send[index++]);
+		if (index == NELEMENTS(msgs_to_send))
+			index = 0;
 
 		size_t msg_size = strlen(encrypted_msg);
-		printk("\nmsg:%s\n", encrypted_msg);
+
+		// printk("\nEncrypted message: %s\n", encrypted_msg);
 		// printk("\nnonce:%s\n", nonce_counter);
 
 		unsigned char tmp[msg_size + sizeof(nonce_counter) + 1];
 		snprintf(tmp, sizeof(tmp), "%s%s", nonce_counter, encrypted_msg);
-	 	// printk("\nmsg with nonce:%s\n", tmp);
-
+	 	printk("\nEncrypted message with nonce: %s\n\n", tmp);
+	 	// unsigned int b64length = 100;
+	 	// unsigned char tmp2[sizeof(tmp)*2];
+	 	// mbedtls_base64_encode(tmp2, sizeof(tmp2), b64length, tmp, sizeof(tmp));
+	 	// printk("\nEncrypted message base64: %s\n", tmp2);
 		int num_fragments = sizeof(tmp) / (PAYLOAD_SIZE-2);
 		if (sizeof(tmp) % PAYLOAD_SIZE != 0)
 			num_fragments++;
-	 	// printk("\nlength %d, %d fragments\n", sizeof(tmp), num_fragments);
 
 		for (i = 1; i <= num_fragments; i++) {
 			char fragment_offset = (char) i;
