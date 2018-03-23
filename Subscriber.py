@@ -4,107 +4,98 @@ from Crypto.Util import Counter
 import binascii
 import requests
 import hashlib
-from flask_restful import Resource, Api
-from flask import Flask, request
 import base64
+import json
+import time
 
 # Define Variables
 MQTT_HOST = "127.0.0.1"
 MQTT_PORT = 2883
 MQTT_KEEPALIVE_INTERVAL = 5
-MQTT_TOPIC = "t"
-
-app = Flask(__name__)
-app.config['JSON_AS_ASCII'] = False
-
-BASE_URL = "http://127.0.0.1:5000/KMS"
-REGISTER_USER_URL = "http://127.0.0.1:5000/KMS/register-user"
+MAIN_TOPIC = "t"
+PRIVATE_TOPIC = None
+NEW_KEY_TOPIC = "new_key"
+EXISTING_KEY_TOPIC = "existing_key"
+REGISTER_TOPIC = "register"
 
 username = "sub2"
 password = "Password123"
-privateKey = None
+private_key = None
 
-keys = ["Gv5BBQvjxDFNgjy", "rh4KTvALW6pyHRKr36yUcu4", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GGo"]
+keys = ["Gv5BBQvjxDFNgjyo", "rh4KTvALW6pyHRKr36yUcu4o", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GGo"]
 current_msg = ""
 current_nonce = ""
-current_fragment = 0
 
 def on_connect(mosq, obj, rc):
-	mqttc.subscribe(MQTT_TOPIC, 0)
+	mqttc.subscribe(MAIN_TOPIC, 0)
+	mqttc.subscribe(username, 0)
 
 def on_subscribe(mosq, obj, mid, granted_qos):
     print "Subscribed to MQTT Topic"
 
 def on_message(mosq, obj, msg):
-	global current_fragment, current_msg, current_nonce
-	s = msg.payload
-	h = binascii.hexlify(s)
+	if msg.topic == MAIN_TOPIC:
+		get_msg(msg.payload)
+	elif msg.topic == PRIVATE_TOPIC:
+		get_key(msg.payload)
+	elif msg.topic == username:
+		registered(msg.payload)
 
+def registered(msg):
+	global private_key, PRIVATE_TOPIC
+	response = json.loads(msg)
+	private_key = response['k']
+	PRIVATE_TOPIC = response['t']
+	print "Private key: " + private_key
+	print "Private topic: " + PRIVATE_TOPIC
+	mqttc.subscribe(PRIVATE_TOPIC.encode('ascii'), 0)
+	get_existing_key(pwdhash, 1)
+
+def get_msg(msg):
+	global current_msg, current_msg
+	h = binascii.hexlify(msg)
 	current_fragment = h[:2]
+
 	if current_msg == "":
-		current_nonce = s[1:17]
-		# print "nonce " + current_nonce
-		current_msg = s[17:]
+		current_nonce = msg[1:17]
+		current_msg = msg[17:]
 	else:
-		current_msg += s[1:]
+		current_msg += msg[1:]
 
 	if current_fragment == "ff":
-		# file2write=open("encrypted_data.txt",'a')
-		# file2write.write(current_msg + '\n')
-		# file2write.close()
 		print "Encrypted message with nonce: " + current_nonce + current_msg
 		decrypt(current_msg, current_nonce, keys[2])
 		current_msg = ""
 
+def get_key(msg):
+	msg = base64.b64decode(msg)
+	nonce = msg[:8] + "00000000"
+	encrypted_msg = msg[8:]
+	print "Encrypted message with nonce: " + nonce + " " + encrypted_msg
+	return decrypt(encrypted_msg, nonce, private_key)
+
 def decrypt(encrypted_msg, nonce, key):
-	global current_nonce
 	ctr = Counter.new(128, initial_value=int_of_string(nonce))
 	aes = AES.new(key, AES.MODE_CTR, counter=ctr)
 	decrypted = aes.decrypt(encrypted_msg)
 	print "Original message: " + decrypted
 	return decrypted
 
-def incrementNonce(nonce):
-	for i in range (16, 0):
-		if ++nonce[i - 1] != 0:
-			break
-		return nonce
-
 def int_of_string(s):
     return int(binascii.hexlify(s), 16)
 
-def registerWithKms(pwdhash):
-	global username, privateKey
-	response = requests.get(REGISTER_USER_URL, json={"username": username, "pwdhash": pwdhash})
-	if response.json()['success'] is True:
-		privateKey = response.json()['key']
-		print "Private key: " + privateKey
-	else:
-		print "Already registered with KMS"
+def register(pwdhash):
+	payload = "{\"u\": \"%s\", \"p\": \"%s\"}" % (username, pwdhash)
+	mqttc.publish(REGISTER_TOPIC, payload)
 
-def getNewKey(pwdhash):
-	global username
-	response = requests.get("%s/new/%s/%s/%d" % (BASE_URL, username, pwdhash, 32))
-	if response.json()['access'] is True:
-		encryptedMsg = base64.b64decode(response.json()['key'])
-		nonce = encryptedMsg[:16]
-		encryptedMsg = encryptedMsg[16:]
-		print "Nonce: " + nonce + " encrypted msg: " + encryptedMsg
-		newKey = decrypt(encryptedMsg, nonce, privateKey)
-	else:
-		print "Access restricted"
+def get_new_key(pwdhash, length):
+	payload = "{\"u\": \"%s\", \"p\": \"%s\",\"l\": %d}" % (username, pwdhash, length)
+	mqttc.publish(NEW_KEY_TOPIC, payload)
 
-def getExistingKey(pwdhash, keyId):
-	global username
-	response = requests.get("%s/existing/%s/%s/%d" % (BASE_URL, username, pwdhash, keyId))
-	if response.json()['access'] is True:
-		encryptedMsg = base64.b64decode(response.json()['key'])
-		nonce = encryptedMsg[:16]
-		encryptedMsg = encryptedMsg[16:]
-		print "Nonce: " + nonce + " encrypted msg: " + encryptedMsg
-		existingKey = decrypt(encryptedMsg, nonce, privateKey)
-	else:
-		print "Access restricted"
+def get_existing_key(pwdhash, key_id):
+	payload = "{\"u\": \"%s\", \"p\": \"%s\",\"kid\": %d}" % (username, pwdhash, key_id)
+	print payload
+	mqttc.publish(EXISTING_KEY_TOPIC, payload)
 
 mqttc = mqtt.Client()
 
@@ -116,7 +107,7 @@ mqttc.connect(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL )
 
 if __name__ == '__main__':
 	pwdhash = hashlib.sha1(password).hexdigest()
-	registerWithKms(pwdhash)
-	getNewKey(pwdhash)
-	getExistingKey(pwdhash, 55)
+	register(pwdhash)
+	# get_new_key(pwdhash, 32)
+	# get_existing_key(pwdhash, 55)
 	mqttc.loop_forever()

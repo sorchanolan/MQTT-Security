@@ -61,7 +61,7 @@ K_MUTEX_DEFINE(pub_data);
 static bool message_changed=false;
 
 const char* keys[] = {"Gv5BBQvjxDFNgjyo", "rh4KTvALW6pyHRKr36yUcu4o", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GGo"};
-static unsigned char* msgs_to_send[] = {"try encrypt thishello", "hello", "hello my name is Sorcha Nolan and I would like to be encrypted", "hi Stefan       ", "yay it works well I hope it does i dunno", "encrypt me you piece of shit"};
+static unsigned char* msgs_to_send[] = {"try encrypt thishello", "hello", "hello my name is Sorcha Nolan and I would like to be encrypted yay it works well I hope it does i dunno hello my name is Sorcha Nolan and I would like to be encrypted yay it works well I hope it does i dunno", "hi Stefan       ", "yay it works well I hope it does i dunno", "encrypt me you piece of shit"};
 static char encrypted_msg[400];
 static unsigned char payload[PAYLOAD_SIZE];
 
