@@ -47,8 +47,14 @@ static struct net_mgmt_event_callback cb;
 K_SEM_DEFINE(pub_sem, 0, 2);
 K_MUTEX_DEFINE(pub_data);
 
-#define TOPIC "t"
 #define PAYLOAD_SIZE 124
+#define TOPIC "t"
+#define NEW_KEY_TOPIC "new_key"
+#define EXISTING_KEY_TOPIC "existing_key"
+#define REGISTER_TOPIC "register"
+
+#define USERNAME "pub1"
+#define PASSWORD "pword"
 
 #define NELEMENTS(x)  (sizeof(x) / sizeof((x)[0]))
 
@@ -63,12 +69,17 @@ static bool message_changed=false;
 const char* keys[] = {"Gv5BBQvjxDFNgjyo", "rh4KTvALW6pyHRKr36yUcu4o", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GGo"};
 static unsigned char* msgs_to_send[] = {"try encrypt thishello", "hello", "hello my name is Sorcha Nolan and I would like to be encrypted yay it works well I hope it does i dunno hello my name is Sorcha Nolan and I would like to be encrypted yay it works well I hope it does i dunno", "hi Stefan       ", "yay it works well I hope it does i dunno", "encrypt me you piece of shit"};
 static char encrypted_msg[400];
-static unsigned char payload[PAYLOAD_SIZE];
+
+static unsigned char* private_key;
+static unsigned char* private_topic;
+static bool registered = false;
+static const char *USERNAME_TOPIC[] = {USERNAME};
+static const enum mqtt_qos QOS[] = {MQTT_QoS0};
 
 int i;
 
 static void prepare_msg(struct mqtt_publish_msg *pub_msg,
-				     enum mqtt_qos qos);
+				     enum mqtt_qos qos, unsigned char* topic, unsigned char* payload);
 static struct mqtt_client_ctx pub_ctx;
 
 #define SS_STACK_SIZE 2048
@@ -124,6 +135,7 @@ void message_thread()
 		// printk("\nEncrypted message: %s\n", encrypted_msg);
 		// printk("\nnonce:%s\n", nonce_counter);
 
+		unsigned char payload[PAYLOAD_SIZE];
 		unsigned char tmp[msg_size + sizeof(nonce_counter) + 1];
 		snprintf(tmp, sizeof(tmp), "%s%s", nonce_counter, encrypted_msg);
 	 	printk("\nEncrypted message with nonce: %s\n\n", tmp);
@@ -141,7 +153,7 @@ void message_thread()
 				fragment_offset = 0xff;
 			snprintf(payload, sizeof(payload), "%c%s", fragment_offset, tmp + ((PAYLOAD_SIZE-2)*(i-1)));
 	 		// printk("\nmsg fragment %d:%s\n", i, payload);
-			prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0);
+			prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0, TOPIC, payload);
 		 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
 		 	PRINT_RESULT("mqtt_tx_publish", rc);
 		 	if (rc < 0) 
@@ -152,6 +164,23 @@ void message_thread()
 		k_sem_give(&pub_sem);
 		k_sleep(APP_SLEEP_MSECS);
 	}
+}
+
+static void register_device() {
+	unsigned char pwdhash[20];
+	unsigned char b64pwdhash[PAYLOAD_SIZE];
+	unsigned char register_payload[PAYLOAD_SIZE];
+	mbedtls_sha1(PASSWORD, sizeof(PASSWORD), pwdhash);
+	unsigned int olen = PAYLOAD_SIZE;
+
+	mbedtls_base64_encode( b64pwdhash, PAYLOAD_SIZE, &olen, pwdhash, sizeof(pwdhash) );
+	snprintf(register_payload, PAYLOAD_SIZE, "{\"u\":\"%s\",\"p\":\"%s\"}", USERNAME, b64pwdhash);
+	printk("Register payload: %s\n", register_payload);
+
+	prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0, REGISTER_TOPIC, register_payload);
+ 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
+ 	PRINT_RESULT("mqtt_tx_publish", rc);
+	registered = true;
 }
 
 static void start_message_thread()
@@ -231,12 +260,101 @@ static int publish_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
 	return rc;
 }
 
+static int subscribe_cb(struct mqtt_ctx *ctx, u16_t pkt_id,
+		 u8_t items, enum mqtt_qos qos[])
+{
+	/* Successful subscription to MQTT topic */
+
+	printk("[%s:%d] <%s> packet id: %u\n", __func__, __LINE__, "MQTT_SUBACK", pkt_id);
+	return 0;
+}
+
+static int unsubscribe_cb(struct mqtt_ctx *ctx, u16_t pkt_id)
+{
+	printk("[%s:%d] <%s> packet id: %u\n", __func__, __LINE__, "MQTT_UNSUBACK", pkt_id);
+	return 0;
+}
+
+static int publish_tx_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
+		      enum mqtt_packet type)
+{
+	const char *str;
+	int rc = 0;
+
+	switch (type) {
+	case MQTT_PUBACK:
+		str = "MQTT_PUBACK";
+		break;
+	case MQTT_PUBCOMP:
+		str = "MQTT_PUBCOMP";
+		break;
+	case MQTT_PUBREC:
+		str = "MQTT_PUBREC";
+		break;
+	default:
+		rc = -EINVAL;
+		str = "Invalid MQTT packet";
+	}
+
+	printk("[%s:%d] <%s> packet id: %u\n", __func__, __LINE__, str, pkt_id);
+
+	return rc;
+}
+
+static int publish_rx_cb(struct mqtt_ctx *ctx, struct mqtt_publish_msg *msg,
+		  u16_t pkt_id, enum mqtt_packet type)
+{
+	const char *str;
+	int rc = 0;
+
+	/* Received a MQTT message published to a topic to which
+	 * we have subscribed. In this case, this will mean an RPC
+	 * request originated from our thingsboard instance. */
+
+	switch (type) {
+	case MQTT_PUBLISH:
+		str = "MQTT_PUBLISH";
+		break;
+	default:
+		rc = -EINVAL;
+		str = "Invalid or unsupported MQTT packet";
+	}
+
+	msg->msg[msg->msg_len] = 0;
+
+	printk("[%s:%d] <%s> packet id: %u\n    topic: %s\n    payload: %s\n",
+		__func__, __LINE__, str, pkt_id, msg->topic, msg->msg);
+
+	if (starts_with(USERNAME, msg->topic)) {
+		registered(msg->msg, msg->msg_len);
+	}
+
+	return rc;
+}
+
+struct json_reg {
+	const char* method;
+	struct json_reg_params {
+		int k;
+		bool t;
+	} params;
+};
+
+static void registered(json, json_len) {
+
+}
+
+static bool starts_with(const char *pre, const char *str)
+{
+    return strncmp(pre, str, strlen(pre)) == 0;
+}
+
 static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
 {
 	printk("[%s:%d] pkt_type: %u\n", __func__, __LINE__, pkt_type);
 }
 
-static char *get_message_payload(enum mqtt_qos qos) 
+static char *get_message_payload(enum mqtt_qos qos, unsigned char* payload) 
 {
 	static char pl[PAYLOAD_SIZE];
 	snprintf(pl, sizeof(pl), "%s\n", payload);
@@ -244,16 +362,16 @@ static char *get_message_payload(enum mqtt_qos qos)
 }
 
 static void prepare_msg(struct mqtt_publish_msg *pub_msg,
-				     enum mqtt_qos qos)
+				     enum mqtt_qos qos, unsigned char* topic, unsigned char* payload)
 {
 	/* MQTT message payload may be anything, we use C strings */
-	pub_msg->msg = get_message_payload(qos);
+	pub_msg->msg = get_message_payload(qos, payload);
 	/* Payload's length */
 	pub_msg->msg_len = strlen(pub_msg->msg);
 	/* MQTT Quality of Service */
 	pub_msg->qos = qos;
 	/* Message's topic */
-	pub_msg->topic = TOPIC;
+	pub_msg->topic = topic;
 	pub_msg->topic_len = strlen(pub_msg->topic);
 	/* Packet Identifier, always use different values */
 	pub_msg->pkt_id = sys_rand32_get();
@@ -281,6 +399,9 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 
 	pub_ctx.mqtt_ctx.disconnect = disconnect_cb;
 	pub_ctx.mqtt_ctx.malformed = malformed_cb;
+	pub_ctx.mqtt_ctx.publish_tx = publish_tx_cb;
+	pub_ctx.mqtt_ctx.publish_rx = publish_rx_cb;
+	pub_ctx.mqtt_ctx.subscribe = subscribe_cb;
 
 	pub_ctx.mqtt_ctx.net_init_timeout = APP_NET_INIT_TIMEOUT;
 	pub_ctx.mqtt_ctx.net_timeout = APP_TX_RX_TIMEOUT;
@@ -306,7 +427,7 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 
 	while ((rc = k_sem_take(&pub_sem, K_FOREVER)) == 0) {
 
-		rc = mqtt_init(&pub_ctx.mqtt_ctx, MQTT_APP_PUBLISHER);
+		rc = mqtt_init(&pub_ctx.mqtt_ctx, MQTT_APP_PUBLISHER_SUBSCRIBER);
 		PRINT_RESULT("mqtt_init", rc);
 
 		if (rc != 0) {
@@ -334,6 +455,13 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 			mqtt_close(&pub_ctx.mqtt_ctx);
 			goto exit_pub;
 		} 
+
+		rc = mqtt_tx_subscribe(&pub_ctx.mqtt_ctx, sys_rand32_get(), 1,
+		USERNAME_TOPIC, QOS);
+		PRINT_RESULT("mqtt_tx_subscribe", rc);
+		if (rc == 0 && !registered) {
+			register_device();
+		}
 
 		do {
 			bool data_changed = false;

@@ -52,7 +52,7 @@ def registered(msg):
 	get_existing_key(pwdhash, 1)
 
 def get_msg(msg):
-	global current_msg, current_msg
+	global current_msg, current_nonce
 	h = binascii.hexlify(msg)
 	current_fragment = h[:2]
 
@@ -106,7 +106,7 @@ mqttc.on_subscribe = on_subscribe
 mqttc.connect(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL )
 
 if __name__ == '__main__':
-	pwdhash = hashlib.sha1(password).hexdigest()
+	pwdhash = base64.b64encode(hashlib.sha1(password).digest())
 	register(pwdhash)
 	# get_new_key(pwdhash, 32)
 	# get_existing_key(pwdhash, 55)
