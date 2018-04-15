@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include <json.h>
+
 #include "config.h"
 
 #if !defined(MBEDTLS_CONFIG_FILE)
@@ -52,6 +54,9 @@ K_MUTEX_DEFINE(pub_data);
 #define NEW_KEY_TOPIC "new_key"
 #define EXISTING_KEY_TOPIC "existing_key"
 #define REGISTER_TOPIC "register"
+#define private_topic "QpdK8pub1"
+#define private_key "NOgcmOABscIenR9GIQFUgPy8EKOUbaem"
+#define input_topic "input"
 
 #define USERNAME "pub1"
 #define PASSWORD "pword"
@@ -65,16 +70,30 @@ K_MUTEX_DEFINE(pub_data);
 	       (func), rc, RC_STR(rc))
 
 static bool message_changed=false;
+static bool time_to_subscribe=true;
+// static bool subscribed_private_topic=false;
 
 const char* keys[] = {"Gv5BBQvjxDFNgjyo", "rh4KTvALW6pyHRKr36yUcu4o", "9PMkFNpjm7oikrhqYd3fEi9byIdz7GGo"};
 static unsigned char* msgs_to_send[] = {"try encrypt thishello", "hello", "hello my name is Sorcha Nolan and I would like to be encrypted yay it works well I hope it does i dunno hello my name is Sorcha Nolan and I would like to be encrypted yay it works well I hope it does i dunno", "hi Stefan       ", "yay it works well I hope it does i dunno", "encrypt me you piece of shit"};
 static char encrypted_msg[400];
 
-static unsigned char* private_key;
-static unsigned char* private_topic;
+// const char* private_key = "vUFq3LeKMQwA/xnOS3xzAA6Pyws=";
+// const char* private_topic = "QpdK8pub1";
 static bool registered = false;
-static const char *USERNAME_TOPIC[] = {USERNAME};
-static const enum mqtt_qos QOS[] = {MQTT_QoS0};
+static bool requesting = false;
+static bool new_msg_input = false;
+static char input_msg[1024];
+
+struct encryption_key {
+   int kid;
+   unsigned char *k;
+   unsigned char key[33];
+   unsigned char nonce[17];
+   int t;
+   s64_t ts;
+};
+
+static struct encryption_key enc_key;
 
 int i;
 
@@ -91,7 +110,7 @@ struct k_thread ss_thread;
 
 static char *rand_string(char *str, size_t size)
 {
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     if (size) {
         --size;
         for (size_t n = 0; n < size; n++) {
@@ -104,62 +123,137 @@ static char *rand_string(char *str, size_t size)
 }
 
 static void encrypt_aes_ctr(unsigned char* nonce, unsigned char* msg_to_send) {
+	printk("decrypted key: %s\n", enc_key.key);
     size_t nc_offset = 0;
     unsigned char stream_block[strlen(msg_to_send)];
 	mbedtls_aes_context ctr;
     mbedtls_aes_init( &ctr );
-	mbedtls_aes_setkey_enc( &ctr, keys[2], 256 );
+	mbedtls_aes_setkey_enc( &ctr, enc_key.key, 256 );
 	mbedtls_aes_crypt_ctr( &ctr, strlen(msg_to_send), &nc_offset, nonce, stream_block, msg_to_send, encrypted_msg );
 	mbedtls_aes_free( &ctr );
+	printk("msg length: %d, enc msg length: %d\n", strlen(msg_to_send), strlen(encrypted_msg));
+}
+
+static void decrypt_key_aes_ctr(unsigned char* nonce, unsigned char* encrypted_key) {
+    size_t nc_offset = 0;
+    unsigned char stream_block[PAYLOAD_SIZE];
+    unsigned char key[33];
+	mbedtls_aes_context ctr;
+    mbedtls_aes_init( &ctr );
+	mbedtls_aes_setkey_enc( &ctr, private_key, 256 );
+	mbedtls_aes_crypt_ctr( &ctr, strlen(encrypted_key), &nc_offset, nonce, stream_block, encrypted_key, key );
+	mbedtls_aes_free( &ctr );
+	key[32] = '\0';
+	strcpy(enc_key.key, key);
+}
+
+static void request_new_key() {
+	unsigned char payload[PAYLOAD_SIZE];
+	unsigned char pwdhash[20];
+	mbedtls_sha1(PASSWORD, sizeof(PASSWORD), pwdhash);
+	unsigned char b64pwdhash[PAYLOAD_SIZE];
+	unsigned int olen = PAYLOAD_SIZE;
+
+	mbedtls_base64_encode( b64pwdhash, PAYLOAD_SIZE, &olen, pwdhash, sizeof(pwdhash) );
+	snprintf(payload, sizeof(payload), "{\"u\": \"%s\", \"p\": \"%s\",\"l\": %d}", USERNAME, b64pwdhash, 32);
+	printk("\nkey request:%s\n", payload);
+	prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0, NEW_KEY_TOPIC, payload);
+ 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
+ 	PRINT_RESULT("mqtt_tx_publish", rc);
+ 	if (rc == 0) {
+ 		requesting = true;
+ 	}
+}
+
+static bool check_key() {
+	printk("Checking key.\n");
+	if (enc_key.kid == 0) {
+		printk("Key has not been received yet.\n");
+		if (!requesting) {
+			request_new_key();
+		}
+		return false;
+	}
+
+	s64_t time_left = (enc_key.ts - k_uptime_get()) / (60 * 1000);
+	printk("Key expires in %lld minutes.", time_left);
+	if (k_uptime_get() > enc_key.ts) {
+		printk("Key has expired. Requesting new key.\n");
+		request_new_key();
+		return false;
+	}
+
+	if (strlen(enc_key.key) != 32) {
+		printk("Incorrect key length. Requesting new key.\n");
+		request_new_key();
+	}
+
+	return true;
+}
+
+static void do_encryption(char* msg) {
+	unsigned char nonce[9];
+	unsigned char nonce_to_be_used[17];
+	printk("\nMessage to send: %s\n", msg);
+	int loop_count = 0;
+	do {
+		memset(&encrypted_msg, 0x00, sizeof(encrypted_msg));
+		memset(&nonce_to_be_used, 0x00, sizeof(nonce_to_be_used));
+		rand_string(nonce, sizeof(nonce));
+		strcpy(nonce_to_be_used, nonce);
+		strcat(nonce_to_be_used, "00000000");
+		encrypt_aes_ctr(nonce_to_be_used, msg);
+		loop_count++;
+	} while(strlen(msg) != strlen(encrypted_msg) && loop_count < 10);
+
+	size_t msg_size = strlen(encrypted_msg);
+
+	unsigned char payload[PAYLOAD_SIZE];
+	unsigned char tmp[msg_size + sizeof(nonce) + 3];
+	int msb = enc_key.kid / 256;
+	unsigned char keyid_msb = (unsigned char) msb;
+	int lsb = enc_key.kid % 256;
+	unsigned char keyid_lsb = (unsigned char) lsb;
+	snprintf(tmp, sizeof(tmp), "%c%c%s%s", keyid_msb, keyid_lsb, nonce, encrypted_msg);
+ 	printk("\nEncrypted message with nonce: %s\n\n", tmp);
+
+	int num_fragments = sizeof(tmp) / (PAYLOAD_SIZE-2);
+	if (sizeof(tmp) % PAYLOAD_SIZE != 0)
+		num_fragments++;
+
+	for (i = 1; i <= num_fragments; i++) {
+		char fragment_offset = (char) i;
+		if (i == num_fragments)
+			fragment_offset = 0xff;
+		snprintf(payload, sizeof(payload), "%c%s", fragment_offset, tmp + ((PAYLOAD_SIZE-2)*(i-1)));
+ 		// printk("\nmsg fragment %d:%s\n", i, payload);
+		prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0, TOPIC, payload);
+	 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
+	 	PRINT_RESULT("mqtt_tx_publish", rc);
+	 	if (rc < 0) 
+	 		break;
+		k_sleep(1000);
+	}
 }
 
 void message_thread()
 {
 	int index = 0;
 	while(true) {
- 		k_sleep(1000);
+ 		// k_sleep(1000);
 		k_mutex_lock(&pub_data, K_FOREVER);
 
-		memset(&encrypted_msg, 0x00, sizeof(encrypted_msg));
-		unsigned char nonce_to_be_used[17];
-		unsigned char nonce_counter[17];
-    	rand_string(nonce_to_be_used, sizeof(nonce_counter));
-    	strncpy(nonce_counter, nonce_to_be_used, sizeof(nonce_counter));
-		printk("\nMessage to send: %s\n", msgs_to_send[index]);
-		encrypt_aes_ctr(nonce_to_be_used, msgs_to_send[index++]);
-		if (index == NELEMENTS(msgs_to_send))
-			index = 0;
-
-		size_t msg_size = strlen(encrypted_msg);
-
-		// printk("\nEncrypted message: %s\n", encrypted_msg);
-		// printk("\nnonce:%s\n", nonce_counter);
-
-		unsigned char payload[PAYLOAD_SIZE];
-		unsigned char tmp[msg_size + sizeof(nonce_counter) + 1];
-		snprintf(tmp, sizeof(tmp), "%s%s", nonce_counter, encrypted_msg);
-	 	printk("\nEncrypted message with nonce: %s\n\n", tmp);
-	 	// unsigned int b64length = 100;
-	 	// unsigned char tmp2[sizeof(tmp)*2];
-	 	// mbedtls_base64_encode(tmp2, sizeof(tmp2), b64length, tmp, sizeof(tmp));
-	 	// printk("\nEncrypted message base64: %s\n", tmp2);
-		int num_fragments = sizeof(tmp) / (PAYLOAD_SIZE-2);
-		if (sizeof(tmp) % PAYLOAD_SIZE != 0)
-			num_fragments++;
-
-		for (i = 1; i <= num_fragments; i++) {
-			char fragment_offset = (char) i;
-			if (i == num_fragments)
-				fragment_offset = 0xff;
-			snprintf(payload, sizeof(payload), "%c%s", fragment_offset, tmp + ((PAYLOAD_SIZE-2)*(i-1)));
-	 		// printk("\nmsg fragment %d:%s\n", i, payload);
-			prepare_msg(&pub_ctx.pub_msg, MQTT_QoS0, TOPIC, payload);
-		 	int rc = mqtt_tx_publish(&pub_ctx.mqtt_ctx, &pub_ctx.pub_msg);
-		 	PRINT_RESULT("mqtt_tx_publish", rc);
-		 	if (rc < 0) 
-		 		break;
- 			k_sleep(1000);
+		if (new_msg_input) {
+			if (check_key()) {
+				// do_encryption(msgs_to_send[index]);
+				do_encryption(input_msg);
+				index++;
+				if (index == NELEMENTS(msgs_to_send))
+					index = 0;
+				new_msg_input = false;
+			}
 		}
+		
 		k_mutex_unlock(&pub_data);	
 		k_sem_give(&pub_sem);
 		k_sleep(APP_SLEEP_MSECS);
@@ -168,9 +262,9 @@ void message_thread()
 
 static void register_device() {
 	unsigned char pwdhash[20];
+	mbedtls_sha1(PASSWORD, sizeof(PASSWORD), pwdhash);
 	unsigned char b64pwdhash[PAYLOAD_SIZE];
 	unsigned char register_payload[PAYLOAD_SIZE];
-	mbedtls_sha1(PASSWORD, sizeof(PASSWORD), pwdhash);
 	unsigned int olen = PAYLOAD_SIZE;
 
 	mbedtls_base64_encode( b64pwdhash, PAYLOAD_SIZE, &olen, pwdhash, sizeof(pwdhash) );
@@ -301,6 +395,98 @@ static int publish_tx_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_id,
 	return rc;
 }
 
+static bool starts_with(const char *pre, const char *str)
+{
+    return strncmp(pre, str, strlen(pre)) == 0;
+}
+
+static void get_registered(char *json, int json_len) {
+
+	struct json_reg_params {
+			char* k;
+			char* t;
+		};
+
+	static const struct json_obj_descr json_reg_descr_params[] = {
+		JSON_OBJ_DESCR_PRIM(struct json_reg_params, k, JSON_TOK_STRING),
+		JSON_OBJ_DESCR_PRIM(struct json_reg_params, t, JSON_TOK_STRING),
+	};
+
+	struct json_reg_params rx_json_reg={};
+
+	json_obj_parse(json, json_len, json_reg_descr_params, ARRAY_SIZE(json_reg_descr_params), &rx_json_reg);
+}
+
+static void msg_received(char *msg) {
+
+}
+
+static void input_msg_received(char *msg) {
+	printk("Input message received: %s", msg);
+	memset(&input_msg, 0x00, sizeof(input_msg));
+	if (starts_with("rand", msg)) {
+		msg = msg + 5;
+		int rand_length = atoi(msg);
+		char rand_str[rand_length]; 
+		rand_string(rand_str, rand_length);
+		printk("rand str (%d): %s", rand_length, rand_str);
+		// do_encryption(rand_str);
+		strncpy(input_msg, rand_str, strlen(rand_str));
+	} else {
+		// do_encryption(msg);
+		strncpy(input_msg, msg, strlen(msg));
+	}
+	new_msg_input = true;
+}
+
+static void new_key_received(char *json, int json_len) {
+	printk("new key response:%s\n", json);
+
+	static const struct json_obj_descr json_key_descr_params[] = {
+		JSON_OBJ_DESCR_PRIM(struct encryption_key, k, JSON_TOK_STRING),
+		JSON_OBJ_DESCR_PRIM(struct encryption_key, t, JSON_TOK_NUMBER),
+		JSON_OBJ_DESCR_PRIM(struct encryption_key, kid, JSON_TOK_NUMBER),
+	};
+
+	json_obj_parse(json, json_len, json_key_descr_params, ARRAY_SIZE(json_key_descr_params), &enc_key);
+
+	s64_t time_now = k_uptime_get();
+	enc_key.ts = time_now + enc_key.t;
+
+	unsigned char nonce[9];
+	unsigned char b64decoded[PAYLOAD_SIZE];
+	strncpy(nonce, enc_key.k, sizeof(nonce));
+	nonce[8] = '\0';
+	unsigned char nonce_counter[17];
+	strncpy(nonce_counter, nonce, sizeof(nonce));
+	strcat(nonce_counter, "00000000");
+	// nonce_counter[16] = '\0';
+	unsigned char *b64 = enc_key.k + 8;
+	strcpy(enc_key.nonce, nonce_counter);
+
+	unsigned int olen = PAYLOAD_SIZE;
+	mbedtls_base64_decode( b64decoded, PAYLOAD_SIZE, &olen, b64, strlen(b64) );
+
+	decrypt_key_aes_ctr(nonce_counter, b64decoded);
+
+	printk("[%s:%d] parsed params: msg:%s, kid:%d, ts:%lld, nonce: %s, key:%s\n",
+	__func__, __LINE__, enc_key.k, enc_key.kid, enc_key.ts, enc_key.nonce, enc_key.key);
+	requesting = false;
+}
+
+static void handleResponse(char *topic, char *msg, int msg_len) {
+	// if (starts_with(USERNAME, topic)) {
+	// 	get_registered(msg, msg_len);
+	// } else 
+	if (starts_with(private_topic, topic)) {
+		new_key_received(msg, msg_len);
+	} else if (starts_with(TOPIC, topic)) {
+		msg_received(msg);
+	} else if (starts_with(input_topic, topic)) {
+		input_msg_received(msg);
+	}
+}
+
 static int publish_rx_cb(struct mqtt_ctx *ctx, struct mqtt_publish_msg *msg,
 		  u16_t pkt_id, enum mqtt_packet type)
 {
@@ -322,31 +508,12 @@ static int publish_rx_cb(struct mqtt_ctx *ctx, struct mqtt_publish_msg *msg,
 
 	msg->msg[msg->msg_len] = 0;
 
-	printk("[%s:%d] <%s> packet id: %u\n    topic: %s\n    payload: %s\n",
-		__func__, __LINE__, str, pkt_id, msg->topic, msg->msg);
+	printk("[%s:%d] <%s> packet id: %u\n    msg: %s\n\n",
+		__func__, __LINE__, str, pkt_id, msg->topic);
 
-	if (starts_with(USERNAME, msg->topic)) {
-		registered(msg->msg, msg->msg_len);
-	}
+	handleResponse(msg->topic, msg->msg, msg->msg_len);
 
 	return rc;
-}
-
-struct json_reg {
-	const char* method;
-	struct json_reg_params {
-		int k;
-		bool t;
-	} params;
-};
-
-static void registered(json, json_len) {
-
-}
-
-static bool starts_with(const char *pre, const char *str)
-{
-    return strncmp(pre, str, strlen(pre)) == 0;
 }
 
 static void malformed_cb(struct mqtt_ctx *mqtt_ctx, u16_t pkt_type)
@@ -456,12 +623,16 @@ void publisher_thread(void * unused1, void * unused2, void * unused3)
 			goto exit_pub;
 		} 
 
+		const char *private_topic_arr[] = {private_topic};
+		const char *input_topic_arr[] = {input_topic};
+		const enum mqtt_qos QOS[] = {MQTT_QoS0};
+
 		rc = mqtt_tx_subscribe(&pub_ctx.mqtt_ctx, sys_rand32_get(), 1,
-		USERNAME_TOPIC, QOS);
+		private_topic_arr, QOS);
 		PRINT_RESULT("mqtt_tx_subscribe", rc);
-		if (rc == 0 && !registered) {
-			register_device();
-		}
+		rc = mqtt_tx_subscribe(&pub_ctx.mqtt_ctx, sys_rand32_get(), 1,
+		input_topic_arr, QOS);
+		PRINT_RESULT("mqtt_tx_subscribe", rc);
 
 		do {
 			bool data_changed = false;

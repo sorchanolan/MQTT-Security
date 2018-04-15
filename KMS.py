@@ -9,6 +9,10 @@ import base64
 import binascii
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
+# import sys
+# # sys.setdefaultencoding() does not exist, here!
+# reload(sys)  # Reload does the trick!
+# sys.setdefaultencoding('latin-1')
 
 MQTT_HOST = "127.0.0.1"
 MQTT_PORT = 2883
@@ -37,6 +41,7 @@ def on_message(mosq, obj, msg):
 		register_request(msg.payload)
 
 def new_key_request(msg):
+	print msg
 	response = json.loads(msg)
 	username = response['u']
 	pwdhash = response['p']
@@ -46,11 +51,12 @@ def new_key_request(msg):
 	if user is not None:
 		user_id = user[0]
 		topic = user[3]
-		key = create_new_key(length, user_id)
+		keyobj = create_new_key(length, user_id)
 	   	private_key = get_private_key(user_id)
-	   	encrypted_key = encrypt(private_key, key)
-		mqttc.publish(topic, encrypted_key)
-		print "Key to send: " + key
+	   	encrypted_key = encrypt(private_key, keyobj[0])
+	   	payload = "{\"k\":\"%s\",\"t\":%d,\"kid\":%d}" % (encrypted_key, keyobj[1], int(keyobj[2]))
+		mqttc.publish(topic, payload)
+		print "Message to send: " + payload
 
 def existing_key_request(msg):
 	print msg
@@ -78,7 +84,7 @@ def register_request(msg):
 	topic = None
 	user = get_user(username, pwdhash)
 	if user is None:
-		topic = username + random_string(5)
+		topic = random_string(5) + username
 		sql = "INSERT INTO Users(username, password, topic) VALUES('%s', '%s', '%s')" % (username, pwdhash, topic)
 		try:
 			cursor.execute(sql)
@@ -140,8 +146,11 @@ def get_private_key(user_id):
 	return None
 
 def create_new_key(length, user_id):
+	keyobj = []
 	key = random_string(length)
-	ts = datetime.datetime.now() + datetime.timedelta(minutes = 10)
+	mins = 1
+	millis = mins * 60 * 1000
+	ts = datetime.datetime.now() + datetime.timedelta(minutes = mins)
 	timestamp = ts.strftime("%s")
 	sql = "INSERT INTO `Keys`(`key`, length, user_id, expiration_ts) VALUES('%s', '%d', '%d', '%s')" % (key, length, user_id, timestamp)
 	try:
@@ -149,7 +158,21 @@ def create_new_key(length, user_id):
 		db.commit()
 	except:
 	   	db.rollback()
-   	return key
+   	keyobj.append(key)
+   	keyobj.append(millis)
+   	keyobj.append(cursor.lastrowid)
+   	return keyobj
+
+def get_key_info(key):
+	sql = "SELECT * FROM `Keys` WHERE key = '%s'" % (key)
+	try:
+		cursor.execute(sql)
+		keyobj = cursor.fetchone()
+		if keyobj is not None:
+			return keyobj
+	except:
+		None
+	return None
 
 def random_string(length):
 	return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(length))
@@ -158,11 +181,15 @@ def int_of_string(s):
     return int(binascii.hexlify(s), 16)
 
 def encrypt(private_key, key_to_encrypt):
+	keyobj = []
 	nonce = random_string(8)
 	nonce_counter = nonce + "00000000"
+	print "key: %s, nonce: %s" % (key_to_encrypt, nonce)
 	ctr = Counter.new(128, initial_value=int_of_string(nonce_counter))
 	aes = AES.new(private_key, AES.MODE_CTR, counter=ctr)
-	return base64.b64encode(nonce + aes.encrypt(key_to_encrypt))
+	b64 = base64.b64encode(aes.encrypt(key_to_encrypt))
+	print "base 64 encrypted %s" % b64
+	return nonce + b64
 
 mqttc = mqtt.Client()
 
